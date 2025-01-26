@@ -1,5 +1,5 @@
 {
-  "name": "moekoemusic",
+  "name": "hmusic",
   "version": "1.2.0",
   "main": "electron/main.js",
   "scripts": {
@@ -47,8 +47,8 @@
       }
     ],
     "appId": "com.MoeKoe.Music",
-    "productName": "MoeKoe Music",
-    "copyright": "© 2024 MoeKoe",
+    "productName": "Hmusic",
+    "copyright": "© 2025 hmusic",
     "directories": {
       "output": "dist_electron"
     },
