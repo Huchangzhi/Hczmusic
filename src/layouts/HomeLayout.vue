@@ -28,16 +28,16 @@ onMounted(() => {
 <style>
 :root {
     /* 粉红色主色调 */
-    --primary-color: #FF69B4;
+    --primary-color:rgba(20, 160, 224, 0.66);
     /* 浅粉红色辅助色 */
-    --secondary-color: #FFB6C1;
+    --secondary-color:rgb(69, 131, 224);
     --text-color: #333;
     /* 浅粉色背景 */
-    --background-color: #FFF0F5;
+    --background-color:rgba(85, 86, 190, 0.27);
     /* 高亮色 */
-    --color-primary: #ea33e4;
+    --color-primary:rgb(28, 61, 207);
     --color-secondary-bg-for-transparent: rgba(209, 209, 214, 0.28);
-    --color-box-shadow: rgba(255, 105, 180, 0.2);
+    --color-box-shadow: rgba(39, 56, 211, 0.2);
 }
 
 * {

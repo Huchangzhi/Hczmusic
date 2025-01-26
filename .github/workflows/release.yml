@@ -63,7 +63,7 @@ jobs:
 
       - name: Rename Windows artifact
         run: |
-          mv "./dist_electron/MoeKoe Music Setup 1.2.0.exe" "./MoeKoe_Music_Setup_${{ needs.increment-version.outputs.version }}.exe"
+          mv "./dist_electron/Hmusic Setup 1.2.0.exe" "./MoeKoe_Music_Setup_${{ needs.increment-version.outputs.version }}.exe"
 
       - name: Upload Windows artifact to GitHub Release
         uses: softprops/action-gh-release@v2

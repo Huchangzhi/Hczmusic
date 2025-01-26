@@ -106,7 +106,7 @@ const selectionTypeMap = {
             { displayText: '🇨🇳 简体中文', value: 'zh-CN' },
             { displayText: '🇨🇳 繁体中文', value: 'zh-TW' },
             { displayText: '🇺🇸 English', value: 'en' },
-            { displayText: '🇯🇵 日本語', value: 'ja' },
+
             { displayText: '🇰🇷 한국어', value: 'ko' }
         ]
     },
