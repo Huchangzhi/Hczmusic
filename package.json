@@ -79,7 +79,7 @@
       "installerHeaderIcon": "build/icons/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "MoeKoe Music",
+      "shortcutName": "Hmusic",
       "include": "build/installer.nsh",
       "license": "build/license.txt",
       "language": "2052",

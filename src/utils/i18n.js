@@ -13,11 +13,11 @@ const messages = {
   'zh-TW': zh_TW,
 };
 
-const defaultLocale = JSON.parse(localStorage.getItem('settings'))?.['language'] || 'zh_CN';
+const defaultLocale = JSON.parse(localStorage.getItem('settings'))?.['language'] || 'ja';
 
 const i18n = createI18n({
   locale: defaultLocale,
-  fallbackLocale: 'zh_CN',
+  fallbackLocale: 'ja',
   messages,
 });
 
