@@ -38,8 +38,8 @@ httpClient.interceptors.response.use(
     },
     error => {
         if (error.response) {
-            console.error(`HTTP Error: ${error.response.status}, Message: ${error.response.data?.message}`);
-            if (error.response.data && error.response.data.data) {
+            console.error(`http error status:${error.response.status}`,error.response.data);
+            if (error.response?.data?.data) {
                 console.error(error.response.data.data);
             } else {
                 ElMessage.error('服务器错误,请稍后再试!');

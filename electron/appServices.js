@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, Tray, Menu, globalShortcut } from 'electron';
+import { app, BrowserWindow, screen, Tray, Menu, globalShortcut, dialog, shell } from 'electron';
 import path from 'path';
 import { spawn } from 'child_process';
 import log from 'electron-log';
@@ -6,15 +6,13 @@ import Store from 'electron-store';
 import { fileURLToPath } from 'url';
 import isDev from 'electron-is-dev';
 import fs from 'fs';
-import kill from 'tree-kill';
 import { exec } from 'child_process';
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 const store = new Store();
 let mainWindow = null;
 let apiProcess = null;
 let tray = null;
+// import { checkForUpdates } from './updater.js';
 
 // 创建主窗口
 export function createWindow() {
@@ -28,8 +26,8 @@ export function createWindow() {
         height: lastWindowState.height || windowHeight,
         x: lastWindowState.x || Math.floor((screenWidth - windowWidth) / 2),
         y: lastWindowState.y || Math.floor((screenHeight - windowHeight) / 2),
-        minWidth: 980,
-        minHeight: 800,
+        minWidth: 890,
+        minHeight: 750,
         frame: false,
         titleBarStyle: 'hiddenInset',
         autoHideMenuBar: true,
@@ -38,12 +36,17 @@ export function createWindow() {
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: false,
-            webSecurity: true
+            webSecurity: true,
+            zoomFactor: 1.0
         },
         icon: isDev
             ? path.join(__dirname, '../build/icons/icon.ico')
             : path.join(process.resourcesPath, 'icons', 'icon.ico')
     });
+
+    if (store.get('maximize')) {
+        mainWindow.maximize();
+    }
 
     if (isDev) {
         mainWindow.loadURL('http://localhost:8080');
@@ -66,6 +69,7 @@ export function createWindow() {
         if (!store.get('disclaimerAccepted')) {
             mainWindow.webContents.send('show-disclaimer');
         }
+        mainWindow.webContents.send('version', app.getVersion());
     });
 
     mainWindow.on('close', (event) => {
@@ -74,9 +78,13 @@ export function createWindow() {
             mainWindow.hide();
         }
     });
-    
+
+    if (process.platform === 'win32') {
+        setThumbarButtons(mainWindow);
+    }
+
     const savedConfig = store.get('settings');
-    if(savedConfig?.desktopLyrics === 'on'){
+    if (savedConfig?.desktopLyrics === 'on') {
         createLyricsWindow();
     }
     return mainWindow;
@@ -86,14 +94,19 @@ let lyricsWindow;
 
 export function createLyricsWindow() {
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-    const windowWidth = 800;
-    const windowHeight = 150;
-    
+    const windowWidth = Math.floor(screenWidth * 0.7);
+    const windowHeight = 200;
+
+    const savedLyricsPosition = store.get('lyricsWindowPosition') || {
+        x: Math.floor((screenWidth - windowWidth) / 2),
+        y: screenHeight - windowHeight
+    };
+
     lyricsWindow = new BrowserWindow({
         width: windowWidth,
         height: windowHeight,
-        x: Math.floor((screenWidth - windowWidth) / 2), 
-        y: screenHeight - windowHeight, 
+        x: savedLyricsPosition.x,
+        y: savedLyricsPosition.y,
         alwaysOnTop: true,
         frame: false,
         transparent: true,
@@ -101,14 +114,19 @@ export function createLyricsWindow() {
         skipTaskbar: true,
         hasShadow: false,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.cjs'), 
+            preload: path.join(__dirname, 'preload.cjs'),
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: false,
-            webSecurity: true
+            webSecurity: true,
+            backgroundThrottling: false, 
+            zoomFactor: 1.0
         }
     });
     mainWindow.lyricsWindow = lyricsWindow;
+    lyricsWindow.on('closed', () => {
+        mainWindow.lyricsWindow = null;
+    });
     if (isDev) {
         lyricsWindow.loadURL('http://localhost:8080/#/lyrics');
         lyricsWindow.webContents.openDevTools();
@@ -118,9 +136,23 @@ export function createLyricsWindow() {
         });
     }
 
+    // 监听窗口移动事件，限制窗口位置
+    lyricsWindow.on('move', () => {
+        const bounds = lyricsWindow.getBounds();
+        const { height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+        
+        // 如果窗口移动到工作区域之外，将其移回工作区域内
+        if (bounds.y + bounds.height > screenHeight) {
+            lyricsWindow.setPosition(bounds.x, screenHeight - bounds.height);
+        }
+        if (bounds.y < 0) {
+            lyricsWindow.setPosition(bounds.x, 0);
+        }
+    });
+
     // 设置窗口置顶级别
     lyricsWindow.setAlwaysOnTop(true, 'screen-saver');
-    
+
     // 允许窗口透明
     lyricsWindow.setBackgroundColor('#00000000');
 }
@@ -146,6 +178,12 @@ export function createTray(mainWindow) {
                 shell.openExternal('https://github.com/iAJue/MoeKoeMusic/issues');
             }
         },
+        // {
+        //     label: '检查更新',
+        //     click: () => {
+        //         checkForUpdates(false);
+        //     }
+        // },
         {
             label: '显示/隐藏', accelerator: 'CmdOrCtrl+Shift+S', click: () => {
                 if (mainWindow) {
@@ -168,9 +206,16 @@ export function createTray(mainWindow) {
     ]);
 
     tray.setToolTip('MoeKoe Music');
-    tray.on('right-click', () => {
-        tray.popUpContextMenu(contextMenu);
-    });
+
+    switch (process.platform) {
+        case 'linux':
+            tray.setContextMenu(contextMenu);
+            break;
+        default:
+            tray.on('right-click', () => {
+                tray.popUpContextMenu(contextMenu);
+            });
+    }
     tray.on('click', () => {
         mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
     });
@@ -242,56 +287,112 @@ export function startApiServer() {
 // 停止 API 服务器
 export function stopApiServer() {
     if (apiProcess) {
-        kill(apiProcess.pid);
+        process.kill(apiProcess.pid, 'SIGKILL');
         apiProcess = null;
     }
 }
 
 // 注册快捷键
 export function registerShortcut() {
-    if (process.platform === 'darwin') {
-        app.on('before-quit', () => { app.isQuitting = true; });
-    } else {
-        globalShortcut.register('CmdOrCtrl+Q', () => {
-            app.isQuitting = true;
-            app.quit();
-        });
-    }
-    globalShortcut.register('CmdOrCtrl+Shift+S', () => {
-        if (mainWindow) {
-            if (mainWindow.isVisible()) {
-                mainWindow.hide();
-            } else {
-                mainWindow.show();
+    try {
+        const settings = store.get('settings');
+        globalShortcut.unregisterAll();
+        let clickFunc = () => { app.isQuitting = true; };
+        if (process.platform === 'darwin') {
+            app.on('before-quit', clickFunc);
+        } else {
+            clickFunc = () => {
+                app.isQuitting = true;
+                app.quit();
+            };
+            if (settings?.shortcuts?.quitApp) {
+                globalShortcut.register(settings?.shortcuts?.quitApp, clickFunc);
+            } else if (!settings?.shortcuts) {
+                globalShortcut.register('CmdOrCtrl+Q', clickFunc);
             }
         }
-    });
 
-    globalShortcut.register('MediaPreviousTrack', () => {
-        mainWindow.webContents.send('play-previous-track');
-    });
-    globalShortcut.register('MediaNextTrack', () => {
-        mainWindow.webContents.send('play-next-track');
-    });
-    globalShortcut.register('Alt+CommandOrControl+Left', () => {
-        mainWindow.webContents.send('play-previous-track');
-    });
-    globalShortcut.register('Alt+CommandOrControl+Right', () => {
-        mainWindow.webContents.send('play-next-track');
-    });
-    globalShortcut.register('Alt+CommandOrControl+Up', () => {
-        mainWindow.webContents.send('volume-up');
-    });
-    globalShortcut.register('Alt+CommandOrControl+Down', () => {
-        mainWindow.webContents.send('volume-down');
-    });
-    globalShortcut.register('MediaPlayPause', () => {
-        mainWindow.webContents.send('toggle-play-pause');
-    });
-    globalShortcut.register('Alt+CommandOrControl+Space', () => {
-        mainWindow.webContents.send('toggle-play-pause'); 
-    });
+        clickFunc = () => {
+            if (mainWindow) {
+                if (mainWindow.isVisible()) {
+                    mainWindow.hide();
+                } else {
+                    mainWindow.show();
+                }
+            }
+        }
+        if (settings?.shortcuts?.mainWindow) {
+            globalShortcut.register(settings?.shortcuts?.mainWindow, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('CmdOrCtrl+Shift+S', clickFunc);
+        }
+
+        clickFunc = () => mainWindow.webContents.send('play-previous-track');
+        if (settings?.shortcuts?.prevTrack) {
+            globalShortcut.register(settings?.shortcuts?.prevTrack, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+CommandOrControl+Left', clickFunc);
+        }
+
+        clickFunc = () => mainWindow.webContents.send('play-next-track');
+        if (settings?.shortcuts?.nextTrack) {
+            globalShortcut.register(settings?.shortcuts?.nextTrack, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+CommandOrControl+Right', clickFunc);
+        }
+
+        clickFunc = () => mainWindow.webContents.send('volume-up');
+        if (settings?.shortcuts?.volumeUp) {
+            globalShortcut.register(settings?.shortcuts?.volumeUp, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+CommandOrControl+Up', clickFunc);
+        }
+
+        clickFunc = () => mainWindow.webContents.send('volume-down');
+        if (settings?.shortcuts?.volumeDown) {
+            globalShortcut.register(settings?.shortcuts?.volumeDown, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+CommandOrControl+Down', clickFunc);
+        }
+
+        clickFunc = () => mainWindow.webContents.send('toggle-play-pause');
+        if (settings?.shortcuts?.playPause) {
+            globalShortcut.register(settings?.shortcuts?.playPause, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+CommandOrControl+Space', clickFunc);
+        }
+
+        clickFunc = () => mainWindow.webContents.send('toggle-mute');
+        if (settings?.shortcuts?.mute) {
+            globalShortcut.register(settings?.shortcuts?.mute, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+CommandOrControl+M', clickFunc);
+        }
+
+        clickFunc = () => mainWindow.webContents.send('toggle-like');
+        if (settings?.shortcuts?.like) {
+            globalShortcut.register(settings?.shortcuts?.like, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+CommandOrControl+L', clickFunc);
+        }
+
+        clickFunc = () => mainWindow.webContents.send('toggle-mode');
+        if (settings?.shortcuts?.mode) {
+            globalShortcut.register(settings?.shortcuts?.mode, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+CommandOrControl+P', clickFunc);
+        }
+    } catch{
+        dialog.showMessageBox({
+            type: 'error',
+            title: '提示',
+            message: '快捷键注册失败，请重新尝试',
+            buttons: ['确定']
+        });
+    }
+
 }
+
 // 播放启动问候语
 export function playStartupSound() {
     const savedConfig = store.get('settings');
@@ -304,7 +405,7 @@ export function playStartupSound() {
         '/assets/sound/qiqi-zh.mp3'
     ];
     const randomIndex = Math.floor(Math.random() * audioFiles.length);
-    const soundPath = isDev 
+    const soundPath = isDev
         ? path.join(__dirname, '..', 'public', audioFiles[randomIndex])
         : path.join(process.resourcesPath, 'public', audioFiles[randomIndex]);
     try {
@@ -326,4 +427,55 @@ export function playStartupSound() {
     } catch (error) {
         console.error('播放启动问候语失败:', error);
     }
+}
+
+// 设置任务栏缩略图工具栏
+export function setThumbarButtons(mainWindow, isPlaying = false) {
+    const buttons = [
+        {
+            tooltip: '上一首',
+            icon: isDev 
+                ? path.join(__dirname, '../build/icons/prev.png')
+                : path.join(process.resourcesPath, 'icons', 'prev.png'),
+            click: () => {
+                mainWindow.webContents.send('play-previous-track');
+                setThumbarButtons(mainWindow, true);
+            }
+        },
+        {
+            tooltip: '暂停',
+            icon: isDev 
+                ? path.join(__dirname, '../build/icons/pause.png')
+                : path.join(process.resourcesPath, 'icons', 'pause.png'),
+            click: () => {
+                mainWindow.webContents.send('toggle-play-pause');
+                setThumbarButtons(mainWindow, false);
+            }
+        },
+        {
+            tooltip: '下一首',
+            icon: isDev 
+                ? path.join(__dirname, '../build/icons/next.png')
+                : path.join(process.resourcesPath, 'icons', 'next.png'),
+            click: () => {
+                mainWindow.webContents.send('play-next-track');
+                setThumbarButtons(mainWindow, true);
+            }
+        }
+    ];
+
+    if (!isPlaying) {
+        buttons[1] = {
+            tooltip: '播放',
+            icon: isDev 
+                ? path.join(__dirname, '../build/icons/play.png')
+                : path.join(process.resourcesPath, 'icons', 'play.png'),
+            click: () => {
+                mainWindow.webContents.send('toggle-play-pause');
+                setThumbarButtons(mainWindow, true);
+            }
+        };
+    }
+
+    mainWindow.setThumbarButtons(buttons);
 }

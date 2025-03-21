@@ -71,8 +71,8 @@ const disagree = () => {
     background: #fff;
     padding: 20px;
     border-radius: 8px;
-    max-width: 700px;
-    width: 90%;
+    max-width: 750px;
+    width: 80%;
 }
 
 .button-group {

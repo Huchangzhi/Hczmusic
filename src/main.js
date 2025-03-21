@@ -30,7 +30,7 @@ app.config.warnHandler = (msg, vm, trace) => {
 // 捕获未处理的 Promise 拒绝
 window.addEventListener('unhandledrejection', event => {
     console.error('未处理的 Promise 拒绝:', event.reason);
-    window.$modal.alert('系统错误');
+    // window.$modal.alert('系统错误');
 });
 app.use(pinia);
 app.use(router);

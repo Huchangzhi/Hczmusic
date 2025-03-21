@@ -39,8 +39,9 @@
                                 </router-link>
                             </li>
                             <li>
-                                <a href="https://github.com/iAJue/MoeKoeMusic/releases" target="_blank">
+                                <a :href="downloadUrl || 'https://github.com/iAJue/MoeKoeMusic/releases'" target="_blank" style="position: relative;">
                                     <i class="fab fa-github"></i> {{ $t('geng-xin') }}
+                                    <i v-if="showNewBadge" class="new-badge">new</i>
                                 </a>
                             </li>
                             <li>
@@ -68,6 +69,7 @@
             <p>{{ $t('6-ben-xiang-mu-jin-yong-yu-dui-ji-shu-ke-hang-xing-de-tan-suo-ji-yan-jiu-bu-jie-shou-ren-he-shang-ye-bao-kuo-dan-bu-xian-yu-guang-gao-deng-he-zuo-ji-juan-zeng') }}</p>
             <p>{{ $t('7-ru-guo-guan-fang-yin-le-ping-tai-jue-de-ben-xiang-mu-bu-tuo-ke-lian-xi-ben-xiang-mu-geng-gai-huo-yi-chu') }}</p>
             <button @click="Disclaimer">{{ $t('guan-bi') }}</button>
+            <div class="version-number">© MoeKoe Music <span v-if="appVersion">V{{ appVersion }} - {{ platform }}</span></div>
         </div>
     </div>
 </template>
@@ -86,8 +88,20 @@ const canGoBack = ref(false);
 const canGoForward = ref(false);
 const forwardStack = ref([]);
 const { t } = useI18n();
+const showNewBadge = ref(false);
+const downloadUrl = ref('');
+const appVersion = ref('');
+const platform = ref('');
 onMounted(() => {
     updateNavigationStatus();
+    if (window.electron) {
+        window.electron.ipcRenderer.on('version', (version) => {
+            appVersion.value = version;
+            fetchLatestVersion();
+            platform.value = window.electron.platform;
+            localStorage.setItem('version', version);
+        });
+    }
 });
 const Disclaimer = () => {
     isDisclaimerVisible.value = !isDisclaimerVisible.value;
@@ -156,6 +170,33 @@ const handleClickOutside = (event) => {
     if (queueProfile && !queueProfile.contains(event.target) && !event.target.closest('.profile')) {
         showProfile.value = false;
     }
+};
+
+const fetchLatestVersion = async () => {
+    try {
+        const response = await fetch('https://api.github.com/repos/iAJue/MoeKoeMusic/releases/latest');
+        const data = await response.json();
+        downloadUrl.value = data.html_url;
+        const latestVersion = data.tag_name.replace(/^v/, '');
+        if (isVersionLower(appVersion.value, latestVersion)) {
+            showNewBadge.value = true; 
+        }
+    } catch (error) {
+        console.error('获取最新版本号失败:', error);
+    }
+};
+
+const isVersionLower = (current, latest) => {
+    const currentParts = current.split('.').map(Number);
+    const latestParts = latest.split('.').map(Number);
+    for (let i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
+        if ((latestParts[i] || 0) > (currentParts[i] || 0)) {
+            return true;
+        } else if ((latestParts[i] || 0) < (currentParts[i] || 0)) {
+            return false;
+        }
+    }
+    return false;
 };
 </script>
 <style scoped>
@@ -374,6 +415,7 @@ header {
 }
 
 .modal-content {
+    position: relative;
     background: #fff;
     padding: 20px;
     border-radius: 8px;
@@ -415,5 +457,24 @@ header {
         opacity: 1;
         transform: scale(1);
     }
+}
+
+.new-badge {
+    position: absolute;
+    top: 1px;
+    left: 67px;
+    background-color: red;
+    color: white;
+    padding: 0px 4px;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.version-number {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 12px;
+    color: #666;
 }
 </style>

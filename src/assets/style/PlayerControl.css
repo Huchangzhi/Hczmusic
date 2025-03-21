@@ -26,7 +26,7 @@
 .char {
     display: inline-block;
     color: transparent;
-    background: linear-gradient(to right, #FF69B4 50%, #878787 50%);
+    background: linear-gradient(to right, var(--primary-color) 50%, #e3e3e3e8 50%);
     background-size: 200% 100%;
     background-position: 100%;
     -webkit-background-clip: text;
@@ -52,6 +52,7 @@
     background: rgba(255, 255, 255, .7);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
+    z-index: 1;
 }
 
 .player-bar {
@@ -59,7 +60,7 @@
     align-items: center;
     padding: 10px;
     width: 100%;
-    max-width: 800px;
+    max-width: 880px;
 }
 
 .album-art {
@@ -94,7 +95,7 @@
 .song-title {
     font-weight: bold;
     margin-bottom: 5px;
-    width: 200px;
+    width: 300px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -107,7 +108,7 @@
 .artist {
     font-size: 0.9em;
     color: #c3c3c3;
-    width: 200px;
+    width: 300px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -248,7 +249,7 @@
     display: flex;
     justify-content: space-between;
     padding: 20px;
-    background: #47474761;
+    background: #1616169c;
 }
 
 .close-btn {
@@ -330,91 +331,6 @@
     color: #fff;
 }
 
-
-/* 播放队列样式 */
-.queue-popup {
-    position: fixed;
-    right: 20px;
-    bottom: 100px;
-    width: 300px;
-    max-height: 400px;
-    background: #fff;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    border-radius: 10px;
-    padding: 10px;
-    z-index: 100;
-    overflow-y: auto;
-}
-
-.queue-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    position: sticky;
-    top: 0px;
-    z-index: 1;
-    border-radius: 5px;
-    padding: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-}
-
-.queue-header h3 {
-    margin: 0;
-    font-size: 1.2em;
-    color: var(--text-color);
-}
-
-
-.queue-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    flex: 1;
-    overflow-y: auto;
-    height: 350px;
-    scroll-behavior: smooth;
-}
-
-.queue-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #ddd;
-}
-
-.queue-song-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.queue-song-title {
-    font-weight: bold;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    width: 250px;
-}
-
-.queue-artist {
-    font-size: 0.9em;
-    color: #666;
-}
-
-.queue-actions {
-    display: flex;
-    align-items: center;
-}
-
-.queue-play-btn {
-    background: none;
-    border: none;
-    font-size: 16px;
-    color: var(--primary-color);
-    cursor: pointer;
-}
-
 .fade-enter-active,
 .fade-leave-active {
     transition: opacity 0.3s ease;
@@ -492,29 +408,6 @@
     font-size: 2em;
 }
 
-.close-store {
-    margin-left: 8px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.queue-item.playing .queue-song-title {
-    color: var(--primary-color);
-    font-weight: bold;
-}
-
-.queue-item.playing .queue-artist {
-    color: var(--primary-color);
-}
-
-.queue-item.marked-as-deleted {
-    text-decoration: line-through;
-    color: #888;
-    transition: all 0.5s ease;
-    opacity: 0.5;
-    pointer-events: none;
-}
-
 .loop-icon {
     position: relative;
     display: inline-block;
@@ -586,4 +479,15 @@
 .lyrics-screen .climax-point {
     background-color: #ff69b4;
     box-shadow: 0 0 4px #ff69b4;
+}
+
+/* 收藏按钮 */
+.like-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.like-btn.active {
+    color: #ff4081;
+    opacity: 1;
 }

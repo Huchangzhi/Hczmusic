@@ -55,9 +55,9 @@
 - [ ] 🎧 지원 Mpris
 - [x] ⌨️ 단축키 및 전역 단축키 사용자 정의
 - [x] 🤟 다국어 지원
-- [ ] 📻 데스크톱 가사
-- [ ] ⚙️ 시스템 아키텍처 최적화
-- [ ] 🎶 노래, 트랙 리스트 / 모음, 취소
+- [x] 📻 데스크톱 가사
+- [x] ⚙️ 시스템 아키텍처 최적화
+- [x] 🎶 노래, 트랙 리스트 / 모음, 취소
 
 로그를 업데이트하려면 [Commits](https://github.com/iAJue/MoeKoeMusic/commits/main/)
 
@@ -98,7 +98,7 @@ npm run electron:build:linux [기본 AppImage 형식]
 ```
 -	macOS: 
 ```sh
-npm run electron:build:macos [기본 Apple Silicon 아키텍처]
+npm run electron:build:macos [기본 듀얼 아키텍처]
 ```
 
 

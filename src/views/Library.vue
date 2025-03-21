@@ -9,6 +9,7 @@
             <img v-if="userVip[1] && userVip[1].is_vip == 1" class="user-level"
                 :src="`./assets/images/${userVip[1].product_type === 'svip' ? 'vip2' : 'vip'}.png`"
                 :title="`${$t('chang-ting-ban')} ${userVip[1].vip_end_time}`" />
+            <span class="sign-in" @click="signIn">签到</span>
         </div>
         <h2 class="section-title" style="margin-bottom: 0px;">{{ $t('wo-xi-huan-ting') }}</h2>
         <div class="favorite-section">
@@ -25,8 +26,7 @@
                 <ul v-if="listenHistory.length > 0">
                     <li v-for="(song, index) in listenHistory" :key="index" class="song-item"
                         @click="playSong($getQuality(null, song), song.name.split(' - ')[1] || song.name, $getCover(song.image, 480), song.singername)">
-                        <img :src="song.image ? $getCover(song.image, 120) : './assets/images/ico.png'" alt="cover"
-                            class="album-cover" />
+                        <img :src="$getCover(song.image, 120)" class="album-cover" />
                         <div class="song-info">
                             <p class="album-name">{{ song.name.split(' - ')[1] || song.name }}</p>
                             <p class="singer-name">{{ song.singername }}</p>
@@ -72,9 +72,10 @@
                     </div>
                 </div>
             </template>
-            <div v-if="selectedCategory === 3 || selectedCategory === 4 || selectedCategory === 5" class="music-card"
-                v-for="(artist, index) in (selectedCategory === 3 ? followedArtists : selectedCategory === 4 ? collectedFriends : selectedCategory === 5 ? followedArtist : [])" :key="index">
-                <img :src="artist.pic" alt="artist avatar" class="album-image" />
+            <div v-if="selectedCategory === 3 || selectedCategory === 4" class="music-card"
+                v-for="(artist, index) in (selectedCategory === 3 ? followedArtists : selectedCategory === 4 ? collectedFriends  : [])" :key="index"
+                @click="goToArtistDetail(artist)">
+                <img :src="artist.pic" class="album-image" />
                 <div class="album-info">
                     <h3>{{ artist.nickname }}</h3>
                 </div>
@@ -85,8 +86,7 @@
         (selectedCategory == 1 && collectedPlaylists.length === 0) || 
         (selectedCategory == 2 && collectedAlbums.length === 0) || 
         (selectedCategory == 3 && followedArtists.length === 0) || 
-        (selectedCategory == 4 && collectedFriends.length === 0) || 
-        (selectedCategory == 5 && followedArtist.length === 0)"
+        (selectedCategory == 4 && collectedFriends.length === 0)"
             :description="t('zhe-li-shi-mo-du-mei-you')" />
     </div>
 </template>
@@ -107,9 +107,8 @@ const collectedAlbums = ref([]); // 收藏的专辑
 const collectedFriends = ref([]); // 好友
 const followedArtists = ref([]); // 关注的歌手
 const listenHistory = ref([]); // 听歌历史
-const followedArtist = ref([]); // 关注的艺人
 const userVip = ref({});
-const categories = ref([t('wo-chuang-jian-de-ge-dan'), t('wo-shou-cang-de-ge-dan'), t('wo-shou-cang-de-zhuan-ji'), t('wo-guan-zhu-de-ge-shou'), t('wo-guan-zhu-de-hao-you'), t('wo-guan-zhu-de-yi-ren')]);
+const categories = ref([t('wo-chuang-jian-de-ge-dan'), t('wo-shou-cang-de-ge-dan'), t('wo-shou-cang-de-zhuan-ji'), t('wo-guan-zhu-de-ge-shou'), t('wo-guan-zhu-de-hao-you')]);
 const selectedCategory = ref(0);
 const isLoading = ref(true); 
 const selectCategory = (index) => {
@@ -173,19 +172,27 @@ const getfollow = async () => {
             pic: artist.pic.replace('/100/', '/480/')
         }));
         collectedFriends.value = artists.filter(artist => !artist.singerid);
-        followedArtists.value = artists.filter(artist => artist.userid == 0);
-        followedArtist.value = artists.filter(artist => artist.source == 7 && artist.userid !== 0);
+        followedArtists.value = artists.filter(artist => artist.source == 7);
     }
 }
 const getplaylist = async () => {
-    const playlistResponse = await get('/user/playlist',{
-        pagesize:100,
-        t: localStorage.getItem('t')
-    });
-    if (playlistResponse.status === 1) {
-        userPlaylists.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid === user.value.userid || playlist.name === '我喜欢').sort((a, b) => a.name === '我喜欢' ? -1 : 1);
-        collectedPlaylists.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid !== user.value.userid && !playlist.authors);
-        collectedAlbums.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid !== user.value.userid && playlist.authors);
+    try {
+        const playlistResponse = await get('/user/playlist',{
+            pagesize:100,
+            t: localStorage.getItem('t')
+        });
+        if (playlistResponse.status === 1) {
+            userPlaylists.value = playlistResponse.data.info.filter(playlist => {
+                if (playlist.name == '我喜欢') {
+                    localStorage.setItem('like', playlist.listid);
+                }
+                return playlist.list_create_userid === user.value.userid || playlist.name === '我喜欢';
+            }).sort((a, b) => a.name === '我喜欢' ? -1 : 1);
+            collectedPlaylists.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid !== user.value.userid && !playlist.authors);
+            collectedAlbums.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid !== user.value.userid && playlist.authors);
+        }
+    } catch (error) {
+        window.$modal.alert(t('xin-zeng-zhang-hao-qing-xian-zai-guan-fang-ke-hu-duan-zhong-deng-lu-yi-ci')); 
     }
 }
 const createPlaylist = async () => {
@@ -202,9 +209,40 @@ const createPlaylist = async () => {
         }
     }
 }
+
+const goToArtistDetail = (artist) => {
+    if (!artist.singerid) return;
+    router.push({
+        path: '/PlaylistDetail',
+        query: { 
+            singerid: artist.singerid,
+            unfollow: true
+        }
+    });
+};
+const signIn = async () => {
+    try {
+        const res = await get('/youth/vip');
+        if (res.status === 1) {
+            window.$modal.alert(`签到成功，获得${res.data.award_vip_hour}小时VIP时长`);
+        }
+    } catch (error) {
+        window.$modal.alert('签到失败，请勿频繁签到');
+    }
+}
 </script>
 
 <style scoped>
+.sign-in {
+    cursor: pointer;
+    color: var(--primary-color);
+    margin-left: 10px;
+    border-radius: 5px;
+    padding: 2px 8px;
+    border: 1px solid var(--primary-color);
+    font-size: 12px;
+}
+
 .library-page {
     padding: 20px;
 }
@@ -331,6 +369,7 @@ const createPlaylist = async () => {
 
 .music-card {
     text-align: center;
+    cursor: pointer;
 }
 
 .album-image {

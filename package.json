@@ -1,6 +1,6 @@
 {
   "name": "hmusic",
-  "version": "1.2.0",
+  "version": "1.4.3",
   "main": "electron/main.js",
   "scripts": {
     "install-all": "npm install && cd api && npm install",
@@ -8,21 +8,25 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:serve": "cross-env NODE_ENV=development electron .",
-    "api": "node API/app.js",
+    "api": "node api/app.js",
     "dev": "npm run api & npm run serve & npm run electron:serve",
     "build:api:win": "npm run --prefix ./api pkgwin",
     "build:api:linux": "npm run --prefix ./api pkglinux",
     "build:api:macos": "npm run --prefix ./api pkgmacos",
-    "electron:build:win": "run-s build:api:win \"electron:build -- --win\"",
-    "electron:build:linux": "run-s build:api:linux \"electron:build -- --linux\"",
-    "electron:build:macos": "run-s build:api:macos \"electron:build -- --mac --arm64\"",
+    "electron:build:win": "run-s build:api:win \"electron:build -- --win --publish never\"",
+    "electron:build:linux": "run-s build:api:linux \"electron:build -- --linux --publish never\"",
+    "electron:build:macos": "run-s build:api:macos \"electron:build -- --mac --universal --publish never\"",
     "electron:build": "cross-env NODE_ENV=production electron-builder"
   },
   "engines": {
     "node": ">=18"
   },
   "build": {
-    "publish": null,
+    "publish": {
+      "provider": "github",
+      "owner": "iAJue",
+      "repo": "MoeKoeMusic"
+    },
     "compression": "maximum",
     "extraResources": [
       {
@@ -68,7 +72,8 @@
             "ia32"
           ]
         }
-      ]
+      ],
+      "artifactName": "${productName}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -86,12 +91,14 @@
       "warningsAsErrors": true
     },
     "mac": {
+      "x64ArchFiles": "*",
       "icon": "build/icons/icon.icns",
       "target": [
         "dmg",
         "zip"
       ],
-      "identity": null
+      "identity": null,
+      "artifactName": "${productName}.${ext}"
     },
     "dmg": {
       "sign": false
@@ -102,7 +109,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "artifactName": "${productName}.${ext}"
     }
   },
   "type": "module",
@@ -128,6 +136,7 @@
     "electron-is-dev": "^3.0.1",
     "electron-log": "^5.2.0",
     "electron-store": "^10.0.0",
+    "electron-updater": "^6.3.9",
     "element-plus": "^2.8.7",
     "pinia": "^2.2.4",
     "pinia-plugin-persistedstate": "^4.1.1",

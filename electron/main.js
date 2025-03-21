@@ -1,9 +1,31 @@
-import { app, ipcMain, globalShortcut, dialog } from 'electron';
-import { createWindow, createTray, startApiServer, stopApiServer, registerShortcut, playStartupSound, createLyricsWindow } from './appServices.js';
+import { app, ipcMain, globalShortcut, dialog, Notification } from 'electron';
+import { 
+    createWindow, createTray, startApiServer, 
+    stopApiServer, registerShortcut, 
+    playStartupSound, createLyricsWindow, setThumbarButtons 
+} from './appServices.js';
+// import { setupAutoUpdater, checkForUpdates } from './updater.js';
 import Store from 'electron-store';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 let mainWindow = null;
 const store = new Store();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit(); 
+  process.exit(0);
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show(); 
+      mainWindow.focus(); 
+    }
+  });
+}
 
 app.on('ready', () => {
     startApiServer().then(() => {
@@ -12,6 +34,10 @@ app.on('ready', () => {
             createTray(mainWindow);
             playStartupSound();
             registerShortcut();
+            // setupAutoUpdater(mainWindow);
+            // setTimeout(() => {
+            //     checkForUpdates(true);
+            // }, 3000);
         } catch (error) {
             console.log('初始化应用时发生错误:', error);
             createTray(null);
@@ -45,9 +71,21 @@ app.on('ready', () => {
     });
 });
 
+const settings = store.get('settings');
+if(settings?.gpuAcceleration === 'off'){
+    app.disableHardwareAcceleration();
+    app.commandLine.appendSwitch('enable-transparent-visuals');
+    app.commandLine.appendSwitch('disable-gpu-compositing');
+}
+
+if(settings?.highDpi === 'on'){
+    app.commandLine.appendSwitch('high-dpi-support', '1');
+    app.commandLine.appendSwitch('force-device-scale-factor', settings?.dpiScale || '1');
+}
+
 // 即将退出
 app.on('before-quit', () => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isMaximized()) {
         const windowBounds = mainWindow.getBounds();
         store.set('windowState', windowBounds);
     }
@@ -86,7 +124,12 @@ ipcMain.on('disclaimer-response', (event, accepted) => {
 ipcMain.on('window-control', (event, action) => {
     switch (action) {
         case 'close':
-            mainWindow.close();
+            if(store.get('settings')?.minimizeToTray === 'off'){
+                app.isQuitting = true;
+                app.quit();
+            }else{
+                mainWindow.close();
+            }
             break;
         case 'minimize':
             mainWindow.minimize();
@@ -94,8 +137,10 @@ ipcMain.on('window-control', (event, action) => {
         case 'maximize':
             if (mainWindow.isMaximized()) {
                 mainWindow.unmaximize();
+                store.set('maximize', false);
             } else {
                 mainWindow.maximize();
+                store.set('maximize', true);
             }
             break;
     }
@@ -107,25 +152,14 @@ app.on('will-quit', () => {
 ipcMain.on('save-settings', (event, settings) => {
     store.set('settings', settings);
 });
-
-ipcMain.on('update-current-time', (event, time) => {
-    const lyricsWindow = mainWindow.lyricsWindow;
-    if (lyricsWindow) {
-        lyricsWindow.webContents.send('update-current-time', time);
-    }
+ipcMain.on('custom-shortcut', (event) => {
+    registerShortcut();
 });
 
-ipcMain.on('lyrics-data', (event, lyricsData) => {
+ipcMain.on('lyrics-data', (event, data) => {
     const lyricsWindow = mainWindow.lyricsWindow;
     if (lyricsWindow) {
-        lyricsWindow.webContents.send('lyrics-data', lyricsData);
-    }
-});
-
-ipcMain.on('lyrics-font-size', (event, fontSize) => {
-    const lyricsWindow = mainWindow.lyricsWindow;
-    if (lyricsWindow) {
-        lyricsWindow.webContents.send('lyrics-font-size', fontSize);
+        lyricsWindow.webContents.send('lyrics-data', data);
     }
 });
 
@@ -145,10 +179,18 @@ ipcMain.on('desktop-lyrics-action', (event, action) => {
             const lyricsWindow = mainWindow.lyricsWindow;
             if (lyricsWindow) {
                 lyricsWindow.close();
+                new Notification({
+                    title: '桌面歌词已关闭',
+                    body: '仅本次生效',
+                    icon: path.join(__dirname, '../build/icons/logo.png')
+                }).show();
+                mainWindow.lyricsWindow = null;
             }
             break;
         case 'display-lyrics':
-            createLyricsWindow();
+            if(!mainWindow.lyricsWindow){
+                createLyricsWindow();
+            }
             break;
     }
 });
@@ -159,3 +201,18 @@ ipcMain.on('set-ignore-mouse-events', (event, ignore) => {
         lyricsWindow.setIgnoreMouseEvents(ignore, { forward: true });
     }
 });
+
+ipcMain.on('window-drag', (event, { mouseX, mouseY }) => {
+    const lyricsWindow = mainWindow.lyricsWindow;
+    if (!lyricsWindow) return
+    lyricsWindow.setPosition(mouseX, mouseY)
+    store.set('lyricsWindowPosition', { x: mouseX, y: mouseY });
+})
+
+ipcMain.on('play-pause-action',(event, playing) =>{
+    const lyricsWindow = mainWindow.lyricsWindow;
+    if (lyricsWindow) {
+        lyricsWindow.webContents.send('playing-status', playing);
+    }
+    setThumbarButtons(mainWindow, playing);
+})

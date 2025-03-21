@@ -55,9 +55,9 @@
 - [ ] 🎧 Mprisのサポート
 - [x] ⌨️ ショートカットとグローバルショートカットのカスタマイズ
 - [x] 🤟 多言語サポート
-- [ ] 📻 デスクトップ歌詞
-- [ ] ⚙️ システムアーキテクチャの最適化
-- [ ] 🎶 曲、歌/コレクション、キャンセル
+- [x] 📻 デスクトップ歌詞
+- [x] ⚙️ システムアーキテクチャの最適化
+- [x] 🎶 曲、歌/コレクション、キャンセル
 
 更新ログは[Commits](https://github.com/iAJue/MoeKoeMusic/commits/main/)
 
@@ -98,7 +98,7 @@ npm run electron：build：linux[デフォルトAppImageフォーマット]
 ```
 -	macOS: 
 ```sh
-npm run electron：build：macos[デフォルトApple Siliconスキーマ]
+npm run electron：build：macos[デフォルトの双架構]
 ```
 
 

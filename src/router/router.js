@@ -8,6 +8,7 @@ import Settings from '@/views/Settings.vue';
 import PlaylistDetail from '@/views/PlaylistDetail.vue';
 import Search from '@/views/Search.vue';
 import Lyrics from '@/views/Lyrics.vue';
+import Ranking from '@/views/Ranking.vue';
 import { MoeAuthStore } from '@/stores/store';
 
 
@@ -23,6 +24,7 @@ const routes = [
             { path: '/settings', name: 'Settings', component: Settings },
             { path: '/playlistDetail', name: 'PlaylistDetail', component: PlaylistDetail },
             { path: '/search', name: 'Search', component: Search },
+            { path: '/ranking', name: 'Ranking', component: Ranking },
         ],
     },
     { path: '/lyrics', name: 'Lyrics', component: Lyrics },

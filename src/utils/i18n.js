@@ -13,7 +13,19 @@ const messages = {
   'zh-TW': zh_TW,
 };
 
-const defaultLocale = JSON.parse(localStorage.getItem('settings'))?.['language'] || 'ja';
+const getBrowserLocale = () => {
+  const browserLang = navigator.language;
+  if (browserLang.startsWith('zh')) {
+    if (browserLang === 'zh-TW' || browserLang === 'zh-HK') {
+      return 'zh-TW';
+    }
+    return 'zh-CN';
+  }
+  const lang = browserLang.split('-')[0];
+  return Object.keys(messages).includes(lang) ? lang : 'ja';
+};
+
+const defaultLocale = JSON.parse(localStorage.getItem('settings'))?.['language'] || getBrowserLocale();
 
 const i18n = createI18n({
   locale: defaultLocale,

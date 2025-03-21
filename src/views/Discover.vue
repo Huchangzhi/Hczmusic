@@ -1,11 +1,26 @@
 <template>
     <div class="discover-page">
         <h2 class="section-title">{{ $t('fa-xian') }}</h2>
-        <div class="tabs">
-            <button v-for="(tab, index) in tabs" :key="index" @click="selectTab(index)"
-                :class="{ active: selectedTab === index }" :tag_id="tab.tag_id">
-                {{ tab.tag_name }}
-            </button>
+        
+        <div class="category-container">
+            <div class="main-categories">
+                <button v-for="(category, index) in categories" 
+                    :key="index" 
+                    @click="selectMainCategory(index)"
+                    :class="{ active: selectedMainCategory === index }">
+                    {{ category.tag_name }}
+                </button>
+            </div>
+            
+            <div class="sub-categories">
+                <button v-for="(tab, index) in currentSubCategories" 
+                    :key="index" 
+                    @click="selectSubCategory(index)"
+                    :class="{ active: selectedSubCategory === index }"
+                    :tag_id="tab.tag_id">
+                    {{ tab.tag_name }}
+                </button>
+            </div>
         </div>
 
         <div v-if="isLoading" class="skeleton-grid">
@@ -36,29 +51,80 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { get } from '../utils/request';
-const tabs = ref([]);
-const selectedTab = ref(0);
+import { useRouter } from 'vue-router';
+const router = useRouter();
+const categories = ref([]); 
+const selectedMainCategory = ref(0);
+const selectedSubCategory = ref(0);
 const tag_id = ref(0);
 const playlistList = ref([]);
 const isLoading = ref(true);
+const currentSubCategories = computed(() => {
+    if (categories.value.length === 0) return [];
+    return categories.value[selectedMainCategory.value]?.son || [];
+});
 
 onMounted(() => {
     tags();
 });
+
 const tags = async () => {
     const response = await get('/playlist/tags');
     if (response.status == 1) {
-        const songCount = response.data.length;
-        const randomIndex = Math.floor(Math.random() * songCount);
-        tabs.value = response.data[randomIndex].son
-            .sort(() => 0.5 - Math.random())
-            .slice(0, 10);
-        tag_id.value = tabs.value[0].tag_id;
-        playlist();
+        categories.value = response.data;
+        if (categories.value.length > 0) {
+            const query = router.currentRoute.value.query;
+            if (query.main && query.sub) {
+                selectedMainCategory.value = parseInt(query.main);
+                selectedSubCategory.value = parseInt(query.sub);
+                if (categories.value[selectedMainCategory.value]?.son?.[selectedSubCategory.value]) {
+                    tag_id.value = categories.value[selectedMainCategory.value].son[selectedSubCategory.value].tag_id;
+                }
+            } else {
+                tag_id.value = categories.value[0].son[0].tag_id;
+            }
+            playlist();
+        }
     }
 }
+
+const selectMainCategory = (index) => {
+    playlistList.value = [];
+    isLoading.value = true;
+    selectedMainCategory.value = index;
+    selectedSubCategory.value = 0;
+    if (currentSubCategories.value.length > 0) {
+        tag_id.value = currentSubCategories.value[0].tag_id;
+        router.replace({ 
+            path: '/discover', 
+            query: { 
+                main: index,
+                sub: 0,
+                tag: currentSubCategories.value[0].tag_id 
+            } 
+        });
+        playlist();
+    }
+};
+
+const selectSubCategory = (index) => {
+    playlistList.value = [];
+    isLoading.value = true;
+    selectedSubCategory.value = index;
+    tag_id.value = currentSubCategories.value[index].tag_id;
+    router.replace({ 
+        path: '/discover', 
+        query: { 
+            main: selectedMainCategory.value,
+            sub: index,
+            tag: currentSubCategories.value[index].tag_id 
+        } 
+    });
+    playlist();
+};
+
 const playlist = async () => {
     const response = await get(`/top/playlist?withsong=0&category_id=${tag_id.value}`);
     if (response.status == 1) {
@@ -66,11 +132,6 @@ const playlist = async () => {
     }
     isLoading.value = false;
 }
-const selectTab = (index) => {
-    selectedTab.value = index;
-    tag_id.value = tabs.value[index].tag_id;
-    playlist();
-};
 </script>
 
 <style scoped>
@@ -85,22 +146,47 @@ const selectTab = (index) => {
     color: var(--primary-color);
 }
 
-.tabs {
+.category-container {
+    margin-bottom: 30px;
+}
+
+.main-categories {
     display: flex;
     gap: 10px;
+    margin-bottom: 15px;
+}
+
+.sub-categories {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
     margin-bottom: 20px;
 }
 
-.tabs button {
+.main-categories button {
+    background-color: var(--secondary-color);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.main-categories button.active {
+    background-color: var(--primary-color);
+}
+
+.sub-categories button {
     background-color: #f5f5f5;
     border: none;
-    padding: 10px 15px;
-    border-radius: 20px;
+    padding: 8px 15px;
+    border-radius: 15px;
     cursor: pointer;
     font-size: 14px;
 }
 
-.tabs button.active {
+.sub-categories button.active {
     background-color: var(--secondary-color);
     color: #fff;
 }
@@ -119,7 +205,7 @@ const selectTab = (index) => {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     padding: 10px;
     text-align: center;
-    width: 200px;
+    width: 180px;
 }
 
 .music-card:hover {

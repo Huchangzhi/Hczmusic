@@ -18,6 +18,15 @@ export const applyColorTheme = (theme) => {
             '--color-secondary-bg-for-transparent': 'rgba(167, 243, 208, 0.28)',
             '--color-box-shadow': 'rgba(52, 199, 89, 0.2)',
         };
+    } else if (theme === 'orange') {
+        colors = {
+            '--primary-color': '#ff6b6b',
+            '--secondary-color': '#FFB6C1',
+            '--background-color': '#FFF0F5',
+            '--color-primary': '#ea33e4',
+            '--color-secondary-bg-for-transparent': 'rgba(209, 209, 214, 0.28)',
+            '--color-box-shadow': 'rgba(255, 105, 180, 0.2)',
+        };
     } else {
         colors = {
             '--primary-color': '#FF69B4',
@@ -36,7 +45,7 @@ export const applyColorTheme = (theme) => {
 
 
 export const getCover = (coverUrl, size) => {
-    if (!coverUrl) return;
+    if (!coverUrl) return './assets/images/ico.png';
     return coverUrl.replace("{size}", size);
 };
 
@@ -46,12 +55,17 @@ export const getQuality = (hashs, data) => {
         if(hashs){
             return hashs[1]?.hash || hashs[0].hash;
         }
-        return data['hash_320'] || data['hash_192'] || data['hash'];
+        return data['hash_320'] || data['hash_192'] || data['hash_128'] || data['hash'];
     }else if(savedConfig?.quality === 'lossless'){
         if(hashs){
             return hashs[hashs.length - 1]?.hash || hashs[1]?.hash || hashs[0].hash;
         }
         return data['hash_flac'] || data['hash_ape'] || data['hash'];
+    }else if(savedConfig?.quality === 'hires'){
+        if(hashs){
+            return hashs[hashs.length - 1]?.hash;
+        }
+        return data['hash_flac'] || data['hash_sq'] || data['hash_ape'] || data['hash'];
     }
     if(hashs){
         return hashs[0].hash;

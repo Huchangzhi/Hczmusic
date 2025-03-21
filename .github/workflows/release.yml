@@ -12,16 +12,17 @@ permissions:
 jobs:
   # 创建版本号
   increment-version:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'release'))
     name: Increment Version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.set-version.outputs.NEW_VERSION }}
+      body: ${{ steps.create-release.outputs.RELEASE_BODY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
       - name: Increment version
         id: set-version
         run: |
@@ -36,6 +37,36 @@ jobs:
           fi
           NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
           echo "::set-output name=NEW_VERSION::$NEW_VERSION"
+
+      - name: Create release body
+        id: create-release
+        run: |
+          # 获取上一个tag
+          PREV_TAG=$(git describe --tags --abbrev=0)
+          # 获取最后一个tag到现在的所有commit信息
+          COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"* %s")
+          # 如果没有commit信息，使用默认消息
+          if [ -z "$COMMITS" ]; then
+            COMMITS="* Regular update and bug fixes"
+          fi
+          # 创建changelog链接
+          CHANGELOG_LINK="https://github.com/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${{ steps.set-version.outputs.NEW_VERSION }}"
+          # 创建release body
+          RELEASE_BODY="## What's Changed\n\n${COMMITS}\n\n**Full Changelog**: [${PREV_TAG}...${{ steps.set-version.outputs.NEW_VERSION }}](${CHANGELOG_LINK})"
+          # 将release body转义后输出
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$RELEASE_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.set-version.outputs.NEW_VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: "Release ${{ steps.set-version.outputs.NEW_VERSION }}"
+          body: ${{ steps.create-release.outputs.RELEASE_BODY }}
+          prerelease: false
+          draft: false
 
   # Windows 端打包并上传到 GitHub Release
   build-windows:
@@ -63,7 +94,9 @@ jobs:
 
       - name: Rename Windows artifact
         run: |
-          mv "./dist_electron/Hmusic Setup 1.2.0.exe" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe"
+          mv "./dist_electron/Hmusic.exe" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe"
+          mv "./dist_electron/Hmusic.exe.blockmap" "./MoeKoe_Music_Setup_${{ needs.increment-version.outputs.version }}.exe.blockmap"
+          mv "./dist_electron/latest.yml" "./latest.yml"
 
       - name: Upload Windows artifact to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -71,9 +104,10 @@ jobs:
           tag_name: ${{ needs.increment-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
           name: "Release ${{ needs.increment-version.outputs.version }}"
-          body: ${{ env.COMMIT_MESSAGE }}
-          prerelease: true
-          files: "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe"
+          files: |
+            ./MoeKoe_Music_Setup_${{ needs.increment-version.outputs.version }}.exe
+            ./MoeKoe_Music_Setup_${{ needs.increment-version.outputs.version }}.exe.blockmap
+            ./latest.yml
 
   # macOS 端打包并上传到 GitHub Release
   build-macos:
@@ -101,8 +135,8 @@ jobs:
 
       - name: Rename macOS artifacts
         run: |
-          mv "./dist_electron/Hmusic-1.2.0-arm64.dmg" "./Hmusic_${{ needs.increment-version.outputs.version }}-arm64.dmg"
-          mv "./dist_electron/Hmusic-1.2.0-arm64-mac.zip" "./Hmusic_${{ needs.increment-version.outputs.version }}-arm64-mac.zip"
+          mv "./dist_electron/MoeKoe Music-1.2.0-arm64.dmg" "./MoeKoe_Music_${{ needs.increment-version.outputs.version }}-arm64.dmg"
+          mv "./dist_electron/MoeKoe Music-1.2.0-arm64-mac.zip" "./MoeKoe_Music_${{ needs.increment-version.outputs.version }}-arm64-mac.zip"
       
       - name: List files after renaming
         run: ls -al ./dist_electron
@@ -113,8 +147,6 @@ jobs:
           tag_name: ${{ needs.increment-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
           name: "Release ${{ needs.increment-version.outputs.version }}"
-          body: ${{ env.COMMIT_MESSAGE }}
-          prerelease: true
           files: |
             ./Hmusic_${{ needs.increment-version.outputs.version }}-arm64.dmg
             ./Hmusic_${{ needs.increment-version.outputs.version }}-arm64-mac.zip
@@ -145,8 +177,8 @@ jobs:
 
       - name: Rename Linux artifacts
         run: |
-          mv "./dist_electron/Hmusic-1.2.0.AppImage" "./Hmusic_${{ needs.increment-version.outputs.version }}.AppImage"
-          mv "./dist_electron/hmusic_1.2.0_amd64.deb" "./hmusic_${{ needs.increment-version.outputs.version }}_amd64.deb"
+          mv "./dist_electron/MoeKoe Music-1.2.0.AppImage" "./MoeKoe_Music_${{ needs.increment-version.outputs.version }}.AppImage"
+          mv "./dist_electron/moekoemusic_1.2.0_amd64.deb" "./moekoemusic_${{ needs.increment-version.outputs.version }}_amd64.deb"
 
       - name: Upload Linux artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -154,9 +186,7 @@ jobs:
           tag_name: ${{ needs.increment-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
           name: "Release ${{ needs.increment-version.outputs.version }}"
-          body: ${{ env.COMMIT_MESSAGE }}
-          prerelease: true
           files: |
-            ./Hmusic_${{ needs.increment-version.outputs.version }}.AppImage
-            ./hmusic_${{ needs.increment-version.outputs.version }}_amd64.deb
+            ./MoeKoe_Music_${{ needs.increment-version.outputs.version }}.AppImage
+            ./moekoemusic_${{ needs.increment-version.outputs.version }}_amd64.deb
         

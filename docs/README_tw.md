@@ -55,9 +55,9 @@
 - [ ] 🎧  支持Mpris
 - [x] ⌨️  全域快速鍵
 - [x] 🤟  多語言支持
-- [ ] 📻  案頭歌詞
-- [ ] ⚙️  系統架構優化
-- [ ] 🎶  歌曲、歌單/收藏、取消
+- [x] 📻  案頭歌詞
+- [x] ⚙️  系統架構優化
+- [x] 🎶  歌曲、歌單/收藏、取消
 
 更新日誌請查看[Commits](https://github.com/iAJue/MoeKoeMusic/commits/main/)
 
@@ -98,7 +98,7 @@ npm run electron:build:linux [默認AppImage格式]
 ```
 - macOS:
 ```sh
-npm run electron:build:macos [默認Apple Silicon架構]
+npm run electron:build:macos [默認雙架構]
 ```
 
 

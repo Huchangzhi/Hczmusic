@@ -1,11 +1,11 @@
 <template>
-    <div class="titlebar">
-        <div class="window-controls" v-if="isElectron && !isMac">
-            <button class="control-button" @click="minimizeWindow" id="minBtn"></button>
-            <button class="control-button" @click="maximizeWindow" id="maxBtn"></button>
-            <button class="control-button" @click="closeWindow" id="closeBtn"></button>
-        </div>
+  <div class="titlebar">
+    <div class="window-controls" v-if="isElectron && !isMac">
+      <button class="control-button" @click="minimizeWindow" id="minBtn"></button>
+      <button class="control-button" @click="maximizeWindow" id="maxBtn"></button>
+      <button class="control-button" @click="closeWindow" id="closeBtn"></button>
     </div>
+  </div>
 </template>
 
 <script setup>
@@ -17,7 +17,6 @@ const maximizeWindow = () => window.electron.ipcRenderer.send('window-control', 
 </script>
 
 <style scoped>
-
 .titlebar {
   -webkit-app-region: drag;
   height: 32px;
@@ -26,15 +25,15 @@ const maximizeWindow = () => window.electron.ipcRenderer.send('window-control', 
   justify-content: flex-end;
   align-items: center;
   z-index: 10;
-  position: relative;
+  position: fixed;
+  width: 100%;
 }
 
 .window-controls {
   -webkit-app-region: no-drag;
   display: flex;
   gap: 8px;
-  margin-right: 8px;
-  position: fixed;
+  margin-right: 30px;
 }
 
 .control-button {
@@ -53,15 +52,15 @@ const maximizeWindow = () => window.electron.ipcRenderer.send('window-control', 
 }
 
 #closeBtn {
-  background-color: #ff5f57!important;
+  background-color: #ff5f57 !important;
 }
 
 #minBtn {
-  background-color: #ffbd2e!important;
+  background-color: #ffbd2e !important;
 }
 
 #maxBtn {
-  background-color: #28c940!important;
+  background-color: #28c940 !important;
 }
 
 .control-button:hover {
@@ -71,6 +70,7 @@ const maximizeWindow = () => window.electron.ipcRenderer.send('window-control', 
 .control-button:hover#closeBtn {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16"><path fill="black" d="M5 5l6 6M5 11l6-6" stroke="black" stroke-width="1.5" stroke-linecap="round"/></svg>');
 }
+
 .control-button:hover#minBtn {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="black" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 8a1 1 0 011-1h10a1 1 0 110 2H3a1 1 0 01-1-1z"/></svg>');
 }
@@ -78,6 +78,7 @@ const maximizeWindow = () => window.electron.ipcRenderer.send('window-control', 
 .control-button:hover#maxBtn {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16"><path fill="none" stroke="black" stroke-width="1.5" d="M3 3 L6 3 L3 6 M3 3 L3 6 M13 3 L10 3 L13 6 M13 3 L13 6 M3 13 L6 13 L3 10 M3 13 L3 10 M13 13 L10 13 L13 10 M13 13 L13 10"/></svg>');
 }
+
 .control-button:focus {
   outline: none;
 }
@@ -102,5 +103,5 @@ const maximizeWindow = () => window.electron.ipcRenderer.send('window-control', 
   margin-left: 12px;
   font-size: 13px;
   color: #333;
-} 
+}
 </style>

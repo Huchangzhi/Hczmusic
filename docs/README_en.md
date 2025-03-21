@@ -55,9 +55,9 @@ I said on my personal introduction page that I particularly enjoy listening to m
 - [ ]  🎧  Support Mpris
 - [x]  ⌨️   Global shortcut keys
 - [x]  🤟  Multi language support
-- [ ]  📻  Desktop Lyrics
-- [ ]  ⚙️  System architecture optimization
-- [ ]  🎶  Songs, playlists/favorites, cancellation
+- [x]  📻  Desktop Lyrics
+- [x]  ⚙️  System architecture optimization
+- [x]  🎶  Songs, playlists/favorites, cancellation
 
 Please check the  for the update log [Commits](https://github.com/iAJue/MoeKoeMusic/commits/main/)
 
@@ -98,7 +98,7 @@ Npm run electron: build: Linux [default AppImage format]
 ```
 -	macOS: 
 ```sh
-Npm run electron: build: macos [default Apple Silicon architecture]
+Npm run electron: build: macos [default universal architecture]
 ```
 
 

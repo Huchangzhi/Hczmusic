@@ -1,225 +1,389 @@
 <template>
-    <div class="lyrics-container">
+    <div class="lyrics-container" :class="{ 'locked': isLocked }">
         <!-- 控制栏 -->
-        <div class="controls-overlay">
+        <div class="controls-overlay" ref="controlsOverlay">
             <div class="controls-wrapper" :class="{ 'locked-controls': isLocked }">
                 <template v-if="!isLocked">
-                    <button @click="sendAction('previous-song')">
+                    <div class="color-controls">
+                        <button 
+                            class="color-button"
+                            title="默认颜色"
+                            @click="$refs.defaultColorInput.click()"
+                        >
+                            <div class="color-preview" :style="{ backgroundColor: defaultColor }"></div>
+                        </button>
+                        <button 
+                            class="color-button"
+                            title="高亮颜色"
+                            @click="$refs.highlightColorInput.click()"
+                        >
+                            <div class="color-preview" :style="{ backgroundColor: highlightColor }"></div>
+                        </button>
+                        <input
+                            ref="defaultColorInput"
+                            type="color"
+                            :value="defaultColor"
+                            @input="e => handleColorChange(e.target.value, 'default')"
+                            class="hidden-color-input"
+                        >
+                        <input
+                            ref="highlightColorInput"
+                            type="color"
+                            :value="highlightColor"
+                            @input="e => handleColorChange(e.target.value, 'highlight')"
+                            class="hidden-color-input"
+                        >
+                    </div>
+                    <button @click="changeFontSize(-2)" class="font-control" title="减小字体">
+                        <i class="fas fa-minus"></i>
+                        <i class="fas fa-font"></i>
+                    </button>
+                    <button @click="sendAction('previous-song')" title="上一首">
                         <i class="fas fa-step-backward"></i>
                     </button>
-                    <button @click="togglePlay">
+                    <button @click="togglePlay" :title="isPlaying ? '暂停' : '播放'">
                         <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
                     </button>
-                    <button @click="sendAction('next-song')">
+                    <button @click="sendAction('next-song')" title="下一首">
                         <i class="fas fa-step-forward"></i>
                     </button>
-                </template>
-                <button @click="toggleLock" class="lock-button">
-                    <i :class="isLocked ? 'fas fa-lock' : 'fas fa-lock-open'"></i>
-                </button>
-                <template v-if="!isLocked">
-                    <button @click="sendAction('close-lyrics')">
+                    <button @click="changeFontSize(2)" class="font-control" title="增大字体">
+                        <i class="fas fa-font"></i>
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button @click="toggleLock" class="lock-button" :title="isLocked ? '解锁' : '锁定'">
+                        <i :class="isLocked ? 'fas fa-lock' : 'fas fa-lock-open'"></i>
+                    </button>
+                    <button @click="sendAction('close-lyrics')" title="关闭歌词">
                         <i class="fas fa-times"></i>
+                    </button>
+                </template>
+                <template v-else>
+                    <button @click="toggleLock" class="lock-button" :title="isLocked ? '解锁' : '锁定'">
+                        <i :class="isLocked ? 'fas fa-lock' : 'fas fa-lock-open'"></i>
                     </button>
                 </template>
             </div>
         </div>
         <!-- 歌词内容 -->
-        <div class="lyrics-container" id="lyricsContainer">暂无歌词</div>
+        <div 
+            class="lyrics-content-wrapper"
+            ref="lyricsContainerRef"
+            @mouseenter="handleMouseEnter"
+            @mouseleave="handleMouseLeave"
+            :class="{ 'hovering': isHovering,'locked': isLocked }"
+            :style="containerStyle"
+        >
+            <template v-if="lyrics.length">
+                <div class="lyrics-line current">
+                    <div class="lyrics-content" 
+                        :style="currentLineStyle"
+                        :class="{ 'hovering': isHovering && !isLocked }"
+                    >
+                        <span
+                            v-for="(segment, index) in processedLyrics[displayedLines[0]]"
+                            :key="`line1-${index}`"
+                            class="character"
+                            :style="getSegmentStyle(segment)"
+                        >{{ segment.text }}</span>
+                    </div>
+                </div>
+                <div class="lyrics-line next" v-if="lyrics[displayedLines[1]]">
+                    <div class="lyrics-content"
+                        :class="{ 'hovering': isHovering && !isLocked }"
+                    >
+                        <span
+                            v-for="(segment, index) in processedLyrics[displayedLines[1]]"
+                            :key="`line2-${index}`"
+                            class="character"
+                            :style="getSegmentStyle(segment)"
+                        >{{ segment.text }}</span>
+                    </div>
+                </div>
+            </template>
+            <div v-else class="lyrics-content hovering nolyrics">暂无歌词</div>
+        </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 const isPlaying = ref(false)
 const isLocked = ref(false)
-let controlsOverlay = null;
-const handleMouseMove = () => setWindowIgnoreMouseEvents(false);
-const handleMouseLeave = () => setWindowIgnoreMouseEvents(true);
-// 存储状态的对象
-const state = {
-    lyricsContainer: null,
-    lyrics: [],
-    currentTime: 0,
-    duration: 0,
-    currentLineIndex: 0,
-    displayedLines: [0, 1]
-};
+const controlsOverlay = ref(null)
+const lyricsContainerRef = ref(null)
+const currentTime = ref(0)
+const currentLineIndex = ref(0)
+const lyrics = ref([])
+const currentLineScrollX = ref(0)
+const isDragging = ref(false)
+const dragOffset = ref({ x: 0, y: 0 })
+const currentLineStyle = computed(() => ({
+    transform: `translateX(${currentLineScrollX.value}px)`
+}))
 
-onMounted(() => {
-    const savedConfig = JSON.parse(localStorage.getItem('settings'));
-    const lyricsFontSize = savedConfig?.lyricsFontSize || '32px';
-    document.querySelector('.lyrics-container').style.fontSize = lyricsFontSize;
-    isLocked.value = localStorage.getItem('lyrics-lock') === 'true'
-    setWindowIgnoreMouseEvents(true);
-    controlsOverlay = document.querySelector('.controls-overlay');
-    controlsOverlay.addEventListener('mousemove', handleMouseMove);
-    controlsOverlay.addEventListener('mouseleave', handleMouseLeave);
-})
+const displayedLines = ref([0, 1]) 
+const defaultColor = ref(localStorage.getItem('lyrics-default-color') || '#999999')
+const highlightColor = ref(localStorage.getItem('lyrics-highlight-color') || 'var(--primary-color)')
 
-// 设置歌词数据
-function setLyrics(lyricsData) {
-    state.lyrics = lyricsData;
-    state.duration = Math.max(...state.lyrics.flatMap(line =>
-        line.characters.map(char => char.endTime / 1000)
-    ));
-    renderLyrics();
-}
-
-// 渲染歌词
-function renderLyrics() {
-    state.lyricsContainer.innerHTML = '';
-    const currentLine = document.createElement('div');
-    currentLine.className = 'lyrics-line current';
-    const nextLine = document.createElement('div');
-    nextLine.className = 'lyrics-line next';
-
-    updateLineContent(currentLine, state.lyrics[0]);
-    if (state.lyrics.length > 1) {
-        updateLineContent(nextLine, state.lyrics[1]);
-    }
-
-    state.lyricsContainer.appendChild(currentLine);
-    state.lyricsContainer.appendChild(nextLine);
-}
-
-// 更新行内容
-function updateLineContent(lineElement, lyricLine) {
-    lineElement.innerHTML = '';
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'lyrics-content';
-
-    lyricLine.characters.forEach(char => {
-        const span = document.createElement('span');
-        span.textContent = char.char;
-        span.className = 'character';
-        span.dataset.startTime = char.startTime / 1000;
-        span.dataset.endTime = char.endTime / 1000;
-        contentDiv.appendChild(span);
-    });
-
-    lineElement.appendChild(contentDiv);
-}
-
-// 更新高亮
-function updateHighlight() {
-    const allChars = document.querySelectorAll('.character');
-    const currentTime = state.currentTime * 1000;
-    let currentChar = null;
-
-    for (let i = 0; i < state.lyrics.length; i++) {
-        const line = state.lyrics[i];
-        const lineStartTime = line.characters[0].startTime;
-        const lineEndTime = line.characters[line.characters.length - 1].endTime;
-
-        if (currentTime >= lineStartTime && currentTime <= lineEndTime) {
-            if (state.currentLineIndex !== i) {
-                state.currentLineIndex = i;
-                updateDisplayedLines();
-            }
-            break;
-        }
-    }
-
-    allChars.forEach(char => {
-        const startTime = parseFloat(char.dataset.startTime);
-        const endTime = parseFloat(char.dataset.endTime);
-        const progress = (state.currentTime - startTime) / (endTime - startTime);
-
-        if (state.currentTime < startTime) {
-            char.style.backgroundImage = `linear-gradient(to right, #FF69B4 0%, #FF69B4 0%, #999 0%)`;
-        } else if (state.currentTime >= endTime) {
-            char.style.backgroundImage = `linear-gradient(to right, #FF69B4 0%, #FF69B4 100%, #999 100%)`;
-        } else {
-            const fillPercent = Math.max(0, Math.min(100, progress * 100));
-            char.style.backgroundImage = `linear-gradient(to right, #FF69B4 0%, #FF69B4 ${fillPercent}%, #999 ${fillPercent}%)`;
-            currentChar = char;
-        }
-    });
-
-    // 处理滚动
-    if (currentChar) {
-        const line = currentChar.closest('.lyrics-line');
-        const content = currentChar.closest('.lyrics-content');
-        const charRect = currentChar.getBoundingClientRect();
-        const lineRect = line.getBoundingClientRect();
-
-        const contentWidth = content.offsetWidth;
-        const lineWidth = line.offsetWidth;
-
-        if (contentWidth > lineWidth) {
-            const charLeft = charRect.left - lineRect.left;
-            const targetPosition = lineWidth * 0.3;
-            const scrollAmount = -(charLeft - targetPosition);
-
-            const maxScroll = 0;
-            const minScroll = -(contentWidth - lineWidth);
-            const finalScroll = Math.min(maxScroll, Math.max(minScroll, scrollAmount));
-
-            content.style.transform = `translateX(${finalScroll}px)`;
-        }
+const handleColorChange = (color, type) => {
+    if (type === 'default') {
+        defaultColor.value = color
+        localStorage.setItem('lyrics-default-color', color)
+    } else {
+        highlightColor.value = color
+        localStorage.setItem('lyrics-highlight-color', color)
     }
 }
 
-// 更新显示的行
-function updateDisplayedLines() {
-    const currentLine = document.querySelector('.lyrics-line.current');
-    const nextLine = document.querySelector('.lyrics-line.next');
-
-    if (state.currentLineIndex > state.displayedLines[1]) {
-        const oldContent = currentLine.querySelector('.lyrics-content');
-        if (oldContent) {
-            oldContent.style.transform = 'translateX(0)';
-        }
-
-        state.displayedLines = [state.currentLineIndex, state.currentLineIndex + 1];
-
-        if (state.currentLineIndex < state.lyrics.length) {
-            updateLineContent(currentLine, state.lyrics[state.currentLineIndex]);
-        }
-        if (state.currentLineIndex + 1 < state.lyrics.length) {
-            updateLineContent(nextLine, state.lyrics[state.currentLineIndex + 1]);
-        }
+const getCharacterStyle = (char) => {
+    const startTime = char.startTime / 1000
+    const endTime = char.endTime / 1000
+    const progress = (currentTime.value - startTime) / (endTime - startTime)
+    
+    let fillPercent = 0
+    if (currentTime.value < startTime) {
+        fillPercent = 0
+    } else if (currentTime.value >= endTime) {
+        fillPercent = 100
+    } else {
+        fillPercent = Math.max(0, Math.min(100, progress * 100))
+    }
+    
+    return {
+        backgroundImage: `linear-gradient(to right, ${highlightColor.value} 50%, ${defaultColor.value} 50%)`,
+        backgroundSize: '200% 100%',
+        backgroundPosition: `${100 - fillPercent}% 0`,
+        transition: 'background-position 0.3s ease-out'
     }
 }
-
-window.electron.ipcRenderer.on('lyrics-data', (newLyrics) => {
-    state.lyricsContainer = state.lyricsContainer ? state.lyricsContainer : document.getElementById('lyricsContainer');
-    setLyrics(newLyrics);
-});
-
-
-window.electron.ipcRenderer.on('update-current-time', (time) => {
-    state.currentTime = time;
-    updateHighlight();
-});
-
-window.electron.ipcRenderer.on('lyrics-font-size', (fontSize) => {
-    document.querySelector('.lyrics-content').style.fontSize = fontSize;
-});
 
 const sendAction = (action) => {
-    window.electron.ipcRenderer.send('desktop-lyrics-action', action);
+    window.electron.ipcRenderer.send('desktop-lyrics-action', action)
 }
-
-const setWindowIgnoreMouseEvents = (ignore) => {
-    window.electron.ipcRenderer.send('set-ignore-mouse-events', ignore);
-};
 
 const togglePlay = () => {
     isPlaying.value = !isPlaying.value
-    sendAction('toggle-play');
+    sendAction('toggle-play')
 }
 
 const toggleLock = () => {
     isLocked.value = !isLocked.value
     localStorage.setItem('lyrics-lock', isLocked.value)
+    if (isLocked.value) {
+        isHovering.value = false
+        window.electron.ipcRenderer.send('set-ignore-mouse-events', true)
+    }
+}
+
+// 更新当前行索引
+const updateCurrentLineIndex = () => {
+    const currentTimeMs = currentTime.value * 1000
+    
+    for (let i = 0; i < lyrics.value.length; i++) {
+        const line = lyrics.value[i]
+        if (!line?.characters?.length) continue
+        
+        const lineStartTime = line.characters[0].startTime
+        const lineEndTime = line.characters[line.characters.length - 1].endTime
+        
+        if (currentTimeMs >= lineStartTime && currentTimeMs <= lineEndTime) {
+            if (currentLineIndex.value !== i) {
+                currentLineIndex.value = i
+                updateDisplayedLines()
+            }
+            break
+        }
+    }
+}
+
+const updateDisplayedLines = () => {
+    const currentIdx = currentLineIndex.value
+    if (currentIdx > displayedLines.value[1]) {
+        displayedLines.value = [currentIdx, currentIdx + 1]
+        currentLineScrollX.value = 0
+        nextTick(() => {
+            const elements = document.querySelectorAll('.lyrics-line .character')
+            elements.forEach(el => {
+                el.style.backgroundPosition = '100% 0'
+                el.style.transition = 'none'
+            })
+        })
+    }
+}
+
+// 开始拖动
+const startDrag = (event) => {
+    if (isLocked.value || 
+        (!event.target.closest('.controls-overlay') && 
+         !event.target.closest('.lyrics-content'))) return
+
+    isDragging.value = true
+    dragOffset.value = {
+        x: event.clientX,
+        y: event.clientY
+    }
+}
+
+// 检查鼠标是否在交互区域
+const checkMousePosition = (event) => {
+    if (isLocked.value) {
+        const isMouseInControls = event.target.closest('.controls-overlay') !== null
+        window.electron.ipcRenderer.send('set-ignore-mouse-events', !isMouseInControls)
+        return
+    }
+    const isMouseInControls = event.target.closest('.controls-overlay') !== null
+    const isMouseInLyrics = event.target.closest('.lyrics-content') !== null && isHovering.value
+
+    window.electron.ipcRenderer.send('set-ignore-mouse-events', !(isMouseInControls || isMouseInLyrics))
+}
+
+window.electron.ipcRenderer.on('lyrics-data', (data) => {
+    if (data.currentTime < 1 || 
+        lyrics.value.length === 0 || 
+        JSON.stringify(lyrics.value) !== JSON.stringify(data.lyricsData)) {
+        
+        lyrics.value = data.lyricsData;
+        processLyrics(); 
+        currentLineIndex.value = 0;
+        currentTime.value = 0;
+        currentLineScrollX.value = 0;
+        displayedLines.value = [0, 1];
+    } 
+    currentTime.value = data.currentTime;
+    updateCurrentLineIndex();
+})
+
+window.electron.ipcRenderer.on('playing-status', (playing)=>{
+    isPlaying.value = !!playing
+})
+
+const fontSize = ref(32)
+const changeFontSize = (delta) => {
+    fontSize.value = Math.max(12, Math.min(72, fontSize.value + delta))
+    localStorage.setItem('lyrics-font-size', fontSize.value)
+}
+
+onMounted(() => {
+    isLocked.value = localStorage.getItem('lyrics-lock') === 'true'
+    window.electron.ipcRenderer.send('set-ignore-mouse-events', true)
+    
+    document.addEventListener('mousemove', checkMousePosition)
+    document.addEventListener('mousedown', startDrag)
+    document.addEventListener('mousemove', onDrag)
+    document.addEventListener('mouseup', endDrag)
+    fontSize.value = parseInt(localStorage.getItem('lyrics-font-size') || '32')
+})
+
+const onDrag = (event) => {
+    if (!isDragging.value) return
+
+    const deltaX = event.screenX - dragOffset.value.x
+    const deltaY = event.screenY - dragOffset.value.y
+
+    window.electron.ipcRenderer.send('window-drag', {
+        mouseX: deltaX,
+        mouseY: deltaY
+    })
+}
+
+const endDrag = () => {
+    isDragging.value = false
 }
 
 onBeforeUnmount(() => {
-    controlsOverlay.removeEventListener('mousemove', handleMouseMove);
-    controlsOverlay.removeEventListener('mouseleave', handleMouseLeave);
+    document.removeEventListener('mousemove', checkMousePosition)
+    document.removeEventListener('mousedown', startDrag)
+    document.removeEventListener('mousemove', onDrag)
+    document.removeEventListener('mouseup', endDrag)
 })
+
+const isHovering = ref(false)
+const handleMouseEnter = () => {
+    if (!isLocked.value) {
+        isHovering.value = true
+        window.electron.ipcRenderer.send('set-ignore-mouse-events', false)
+    }
+}
+
+const handleMouseLeave = () => {
+    isHovering.value = false
+    if (!isLocked.value) {
+        window.electron.ipcRenderer.send('set-ignore-mouse-events', true)
+    }
+}
+
+const containerStyle = computed(() => ({
+    fontSize: `${fontSize.value}px`
+}))
+
+const processedLyrics = ref([])
+
+const processLyrics = () => {
+    if (!lyrics.value || lyrics.value.length === 0) {
+        processedLyrics.value = []
+        return
+    }
+    
+    processedLyrics.value = lyrics.value.map(line => {
+        if (!line?.characters?.length) return []
+        
+        const segments = []
+        let currentSegment = null
+        let isEnglish = false
+        
+        for (let i = 0; i < line.characters.length; i++) {
+            const char = line.characters[i]
+            const isCurrentCharEnglish = /[a-zA-Z]/.test(char.char)
+            
+            if (i === 0 || isCurrentCharEnglish !== isEnglish) {
+                if (currentSegment) {
+                    segments.push(currentSegment)
+                }
+                
+                currentSegment = {
+                    text: char.char,
+                    startTime: char.startTime,
+                    endTime: char.endTime
+                }
+                
+                isEnglish = isCurrentCharEnglish
+            } else {
+                currentSegment.text += char.char
+                currentSegment.endTime = char.endTime
+            }
+        }
+        
+        if (currentSegment) {
+            segments.push(currentSegment)
+        }
+        
+        return segments
+    })
+}
+
+// 获取段落样式
+const getSegmentStyle = (segment) => {
+    const startTime = segment.startTime / 1000
+    const endTime = segment.endTime / 1000
+    const progress = (currentTime.value + 0.5 - startTime) / (endTime - startTime)
+    
+    let fillPercent = 0
+    if (currentTime.value + 0.5 < startTime) {
+        fillPercent = 0
+    } else if (currentTime.value + 0.5 >= endTime) {
+        fillPercent = 100
+    } else {
+        fillPercent = Math.max(0, Math.min(100, progress * 100))
+    }
+    
+    return {
+        backgroundImage: `linear-gradient(to right, ${highlightColor.value} 50%, ${defaultColor.value} 50%)`,
+        backgroundSize: '200% 100%',
+        backgroundPosition: `${100 - fillPercent}% 0`,
+        transition: 'background-position 0.3s ease-out'
+    }
+}
 </script>
 
 <style>
@@ -227,7 +391,8 @@ body,
 html {
     background-color: rgba(0, 0, 0, 0);
 }
-
+</style>
+<style scoped>
 .character {
     display: inline-block;
     color: transparent;
@@ -237,6 +402,7 @@ html {
     -webkit-background-clip: text;
     color: transparent;
     font-weight: bold;
+    letter-spacing: 2px;
 }
 
 .lyrics-container {
@@ -245,16 +411,36 @@ html {
     user-select: none;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
     cursor: inherit;
+    font-weight: bold;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+}
+
+.lyrics-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     width: 100%;
+}
+
+.lyrics-container-hover:not(.locked):hover {
+    background-color: rgba(0, 0, 0, 0.5);
 }
 
 .controls-overlay {
     opacity: 0;
     transition: opacity 0.3s ease;
-    margin-top: 10px;
+    margin-bottom: 10px;
+    height: 40px;
+    position: relative;
+    z-index: 10;
 }
 
 .controls-overlay:hover {
@@ -265,12 +451,13 @@ html {
     display: flex;
     gap: 15px;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 6px;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 6px 12px;
     border-radius: 20px;
     backdrop-filter: blur(4px);
     transition: all 0.3s ease;
-    width: 430px;
+    width: auto;
+    min-width: 430px;
 }
 
 .lock-button {
@@ -289,12 +476,12 @@ html {
 }
 
 .controls-wrapper button {
-    background: transparent;
-    border: none;
+    background: #020202c4;
+    border: none !important;
     color: white;
     cursor: pointer;
-    width: 28px;
-    height: 28px;
+    width: 28px !important;
+    height: 28px !important;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -308,6 +495,7 @@ html {
 .lyrics-line {
     overflow: hidden;
     position: relative;
+    transition: transform 0.3s ease-out;
 }
 
 .lyrics-line.current {
@@ -321,6 +509,83 @@ html {
 .lyrics-content {
     display: inline-block;
     white-space: nowrap;
-    transition: transform 0.3s ease-out;
+    transition: all 0.3s ease-out;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.lyrics-container:not(.locked) .lyrics-content.hovering:hover {
+    cursor: move;
+}
+
+.nolyrics{
+    margin-bottom: 30px;
+}
+
+.controls-wrapper:not(.locked-controls) {
+    cursor: move;
+}
+
+.font-size-controls {
+    display: none;
+}
+
+.font-control {
+    opacity: 0.8;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    width: auto !important;
+}
+
+.font-control i {
+    font-size: 12px;
+}
+
+.font-control i.fa-font {
+    font-size: 14px;
+    margin: 0 1px;
+}
+
+.font-control:hover {
+    opacity: 1;
+}
+
+.font-icon {
+    display: none;
+}
+
+.color-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.color-button {
+    padding: 2px !important;
+    width: 24px !important;
+    height: 24px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.color-preview {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.hidden-color-input {
+    position: absolute;
+    visibility: hidden;
+    width: 0;
+    height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
 }
 </style>

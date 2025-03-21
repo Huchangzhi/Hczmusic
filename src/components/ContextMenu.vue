@@ -50,9 +50,11 @@ const fetchPlaylists = async () => {
     if(!MoeAuth.isAuthenticated) return;
     showSubMenu.value = true;
     try {
-        const playlistResponse = await get('/user/playlist');
+        const playlistResponse = await get('/user/playlist',{
+            pagesize:100
+        });
         if (playlistResponse.status === 1) {
-            playlists.value = playlistResponse.data.info.filter(playlist => playlist.list_create_username === MoeAuth.UserInfo.nickname);
+            playlists.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid === MoeAuth.UserInfo.userid);
         }
     } catch (error) {
         ElMessage.error({
@@ -65,7 +67,7 @@ const fetchPlaylists = async () => {
 // 添加到歌单功能
 const addToPlaylist = async (listid, song) => {
     try {
-        await get(`/playlist/tracks/add?listid=${listid}&data=${song.OriSongName}|${song.FileHash}`);
+        await get(`/playlist/tracks/add?listid=${listid}&data=${encodeURIComponent(song.OriSongName.replace(',', ''))}|${song.FileHash}`);
         hideContextMenu();
         ElMessage.success({
             message: i18n.global.t('cheng-gong-tian-jia-dao-ge-dan'),
@@ -102,10 +104,7 @@ const props = defineProps({
 
 const addToNext = async (song) => {
     let songNameParts = song?.OriSongName.split(' - ');
-    if(songNameParts.length != 2 ){
-        songNameParts = song?.FileName.split(' - ');
-    }
-    props.playerControl.addToNext(song.FileHash, songNameParts[0], song.cover, songNameParts[1], song.timeLength);
+    props.playerControl.addToNext(song.FileHash, songNameParts[1], song.cover, songNameParts[0], song.timeLength);
     ElMessage.success({
         message:  i18n.global.t('tian-jia-cheng-gong'),
         duration: 2000
