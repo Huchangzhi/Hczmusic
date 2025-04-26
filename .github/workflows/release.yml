@@ -94,8 +94,8 @@ jobs:
 
       - name: Rename Windows artifact
         run: |
-          mv "./dist_electron/Hmusic.exe" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe"
-          mv "./dist_electron/Hmusic.exe.blockmap" "./MoeKoe_Music_Setup_${{ needs.increment-version.outputs.version }}.exe.blockmap"
+          mv "./dist_electron/MoeKoe_Music_Setup_${{ needs.increment-version.outputs.version }}.exe" "./Hmusic_${{ needs.increment-version.outputs.version }}.exe"
+          mv "./dist_electron/MoeKoe_Music_Setup_${{ needs.increment-version.outputs.version }}.exe.blockmap" "./Hmusic_${{ needs.increment-version.outputs.version }}.exe.blockmap"
           mv "./dist_electron/latest.yml" "./latest.yml"
 
       - name: Upload Windows artifact to GitHub Release
@@ -177,8 +177,8 @@ jobs:
 
       - name: Rename Linux artifacts
         run: |
-          mv "./dist_electron/Hmusic-1.2.0.AppImage" "./Hmusic_${{ needs.increment-version.outputs.version }}.AppImage"
-          mv "./dist_electron/hmusic_1.2.0_amd64.deb" "./hmusic_${{ needs.increment-version.outputs.version }}_amd64.deb"
+          mv "./dist_electron/Hmusic.AppImage" "./Hmusic_${{ needs.increment-version.outputs.version }}.AppImage"
+          mv "./dist_electron/Hmusic.deb" "./hmusic_${{ needs.increment-version.outputs.version }}_amd64.deb"
 
       - name: Upload Linux artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
