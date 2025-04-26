@@ -32,9 +32,12 @@
                 </button>
             </div>
             <div class="extra-controls">
-                <button class="extra-btn" title="桌面歌词" v-if="isElectron()" @click="desktopLyrics"><i class="fas">词</i></button>
-                <button class="extra-btn" title="我喜欢" @click="playlistSelect.toLike()"><i class="fas fa-heart"></i></button>
-                <button class="extra-btn" title="收藏至" @click="playlistSelect.fetchPlaylists()"><i class="fas fa-add"></i></button>
+                <button class="extra-btn" title="桌面歌词" v-if="isElectron()" @click="desktopLyrics"><i
+                        class="fas">词</i></button>
+                <button class="extra-btn" title="我喜欢" @click="playlistSelect.toLike()"><i
+                        class="fas fa-heart"></i></button>
+                <button class="extra-btn" title="收藏至" @click="playlistSelect.fetchPlaylists()"><i
+                        class="fas fa-add"></i></button>
                 <button class="extra-btn" @click="togglePlaybackMode">
                     <i v-if="currentPlaybackModeIndex != '2'" :class="currentPlaybackMode.icon"
                         :title="currentPlaybackMode.title"></i>
@@ -55,9 +58,9 @@
             </div>
         </div>
     </div>
-    
+
     <!-- 播放队列 -->
-    <QueueList :current-song="currentSong" @add-song-to-queue="addSongToQueue" ref="queueList"/>
+    <QueueList :current-song="currentSong" @add-song-to-queue="onQueueSongAdd" @add-cloud-music-to-queue="onQueueCloudSongAdd" ref="queueList" />
 
     <!-- 全屏歌词界面 -->
     <transition name="slide-up">
@@ -71,7 +74,7 @@
                 <div class="left-section">
                     <div class="album-art-large">
                         <img v-if="easterEggImage" :src="easterEggImage.src" :class="easterEggClass" alt="Easter Egg" />
-                        <img :src="currentSong?.img || 'https://random.MoeJue.cn/randbg.php'" alt="Album Art" />
+                        <img :src="currentSong?.img || './assets/images/!.png'" alt="Album Art" />
                     </div>
                     <div class="song-details">
                         <div class="song-title">{{ currentSong?.name }}</div>
@@ -118,9 +121,9 @@
                         </button>
                     </div>
                 </div>
-                <div id="lyrics-container">
+                <div id="lyrics-container" @wheel="handleLyricsWheel" @mousedown="startLyricsDrag" @mousemove="handleLyricsDrag" @mouseup="endLyricsDrag" @mouseleave="endLyricsDrag">
                     <div v-if="lyricsData.length > 0" id="lyrics"
-                        :style="{ fontSize: lyricsFontSize, transform: `translateY(${scrollAmount ? scrollAmount+'px' : '50%'})` }">
+                        :style="{ fontSize: lyricsFontSize, transform: `translateY(${scrollAmount ? scrollAmount + 'px' : '50%'})` }">
                         <div v-for="(lineData, lineIndex) in lyricsData" :key="lineIndex" class="line">
                             <span v-for="(charData, charIndex) in lineData.characters" :key="charIndex" class="char"
                                 :class="{ highlight: charData.highlighted }">
@@ -135,102 +138,50 @@
     </transition>
 
     <!-- 歌单选择模态框 -->
-    <PlaylistSelectModal ref="playlistSelect" :current-song="currentSong" :playlists="playlists"/>
+    <PlaylistSelectModal ref="playlistSelect" :current-song="currentSong" :playlists="playlists" />
 
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted, onBeforeUnmount } from 'vue';
-import { get } from '../utils/request';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useMusicQueueStore } from '../stores/musicQueue';
-import { MoeAuthStore } from '../stores/store';
 import { useI18n } from 'vue-i18n';
 import PlaylistSelectModal from './PlaylistSelectModal.vue';
 import QueueList from './QueueList.vue';
+
+// 从统一入口导入所有模块
+import {
+    useAudioController,
+    useLyricsHandler,
+    useProgressBar,
+    usePlaybackMode,
+    useMediaSession,
+    useSongQueue,
+    useHelpers
+} from './player';
+
+// 基础设置
 const queueList = ref(null);
 const playlistSelect = ref(null);
-const MoeAuth = MoeAuthStore();
 const { t } = useI18n();
-const showLyrics = ref(false); // 是否显示歌词
-const isDragging = ref(false);
-const currentSong = ref({ name: '', author: '', img: '', url: '', hash: '' }); // 当前播放的音乐信息
-const playing = ref(false); // 是否正在播放
-const isMuted = ref(false); // 是否静音
-const volume = ref(66); // 音量初始值为 100
-const audio = new Audio(); // 创建音频对象
-const musicQueueStore = useMusicQueueStore(); // 使用 Pinia store
-let sliderElement = null; // 用来保存音量滑块的 DOM 引用
-const progressWidth = ref(0);
-const lyricsData = ref([]);
-const scrollAmount = ref();
-const currentTime = ref(0);
-const SongTips = ref(t('zan-wu-ge-ci'));
-const lyricsBackground = ref('on');
-let currentLineIndex = 0;
-const timeoutId = ref(null);
-const playbackModes = ref([
-    { icon: 'fas fa-random', title: t('sui-ji-bo-fang') },
-    { icon: 'fas fa-refresh', title: t('lie-biao-xun-huan') },
-    { icon: '', title: t('dan-qu-xun-huan') }
-]);
-const currentPlaybackModeIndex = ref(0);
-const currentPlaybackMode = computed(() => playbackModes.value[currentPlaybackModeIndex.value]);
-const isProgressDragging = ref(false);
-const isDraggingHandle = ref(false);
-const climaxPoints = ref([]);
-const NextSong = ref([]);
+const musicQueueStore = useMusicQueueStore();
 const playlists = ref([]);
+const currentTime = ref(0);
 const lyricsFontSize = ref('24px');
-const isInputFocused = ref(false);
-const playedSongsStack = ref([]);
-const currentStackIndex = ref(-1);
+const lyricsBackground = ref('on');
+const isDragging = ref(false);
+const sliderElement = ref(null);
 
-// 切换随机/顺序/单曲播放
-const togglePlaybackMode = () => {
-    currentPlaybackModeIndex.value = (currentPlaybackModeIndex.value + 1) % playbackModes.value.length;
-    audio.loop = currentPlaybackModeIndex.value == 2;
-    playedSongsStack.value = [];
-    currentStackIndex.value = -1;
-    localStorage.setItem('player_playback_mode', currentPlaybackModeIndex.value);
-};
+// 辅助函数
+const { isElectron, throttle, getVip, desktopLyrics } = useHelpers(t);
 
-onMounted(() => {
-    const savedVolume = localStorage.getItem('player_volume');
-    if (savedVolume !== null) volume.value = parseFloat(savedVolume);
-    isMuted.value = volume.value === 0;
-    audio.volume = volume.value / 100;
-    const current_song = localStorage.getItem('current_song');
-    if (current_song) currentSong.value = JSON.parse(current_song);
-    currentPlaybackModeIndex.value = localStorage.getItem('player_playback_mode') || 1;
-    audio.loop = currentPlaybackModeIndex.value == 2;
-    const settings = JSON.parse(localStorage.getItem('settings'));
-    if (settings) {
-        lyricsBackground.value = settings?.lyricsBackground;
-        lyricsFontSize.value = settings?.lyricsFontSize;
-    }
-    handleShortcut();
-    if (current_song && localStorage.getItem('player_progress')) {
-        audio.currentTime = localStorage.getItem('player_progress');
-        progressWidth.value = (audio.currentTime / currentSong.value.timeLength) * 100;
-    }
-    initMediaSession();
-    getVip();
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('focus', checkFocus, true);
-    document.addEventListener('blur', checkFocus, true);
-});
-const formattedCurrentTime = computed(() => formatTime(currentTime.value));
-const formattedDuration = computed(() => formatTime(currentSong.value?.timeLength || 0));
-const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-};
+// Easter Egg 相关
 const easterEggImages = [
     { src: './assets/images/miku.png', class: 'miku' },
     { src: './assets/images/miku2.png', class: 'miku2' },
     { src: './assets/images/miku3.png', class: 'miku3' }
 ];
+
 const easterEggImage = computed(() => {
     const author = currentSong.value?.author || '';
     if (author.includes('初音') || author.includes('Miku')) {
@@ -239,146 +190,442 @@ const easterEggImage = computed(() => {
     }
     return null;
 });
+
 const easterEggClass = computed(() => easterEggImage.value?.class || '');
-// 播放音乐
-const playSong = async (song) => {
-    try {
-        currentSong.value = structuredClone(song);
-        lyricsData.value = [];
-        audio.src = song.url;
-        try {
-            changeMediaSession(currentSong.value);
-            await audio.play();
-            playing.value = true;
-        } catch (playError) {
-            console.warn('播放被中断，尝试重新播放:', playError);
-            setTimeout(async () => {
-                try {
-                    await audio.play();
-                    playing.value = true;
-                } catch (retryError) {
-                    window.$modal.alert(t('bo-fang-shi-bai'));
-                    playing.value = false;
-                }
-            }, 100);
+
+// 初始化事件回调
+const onSongEnd = () => {
+    if (currentPlaybackModeIndex.value == 2) return;
+    playSongFromQueue('next');
+};
+
+// 节流处理的时间更新函数
+const updateCurrentTime = throttle(() => {
+    currentTime.value = audio.currentTime;
+    if (!isProgressDragging.value) {
+        progressWidth.value = (currentTime.value / audio.duration) * 100;
+    }
+
+    const savedConfig = JSON.parse(localStorage.getItem('settings') || '{}');
+    if (audio && lyricsData.value.length) {
+        if (showLyrics.value) {
+            highlightCurrentChar(audio.currentTime);
         }
 
-        localStorage.setItem('current_song', JSON.stringify(currentSong.value));
+        if (isElectron()) {
+            if (savedConfig?.desktopLyrics === 'on') {
+                window.electron.ipcRenderer.send('lyrics-data', {
+                    currentTime: audio.currentTime,
+                    lyricsData: JSON.parse(JSON.stringify(lyricsData.value))
+                });
+            }
+            if (savedConfig?.apiMode === 'on') {
+                window.electron.ipcRenderer.send('server-lyrics', {
+                    currentTime: audio.currentTime,
+                    lyricsData: JSON.parse(JSON.stringify(originalLyrics.value)),
+                    currentSong: JSON.parse(JSON.stringify(currentSong.value)),
+                    duration: audio.duration
+                });
+            }
+        }
+    } else if (isElectron() && currentSong.value?.hash && (savedConfig?.desktopLyrics === 'on' || savedConfig?.apiMode === 'on')) {
         getLyrics(currentSong.value.hash);
+    }
+
+    localStorage.setItem('player_progress', audio.currentTime);
+}, 200);
+
+// 初始化各个模块
+const audioController = useAudioController({ onSongEnd, updateCurrentTime });
+const { playing, isMuted, volume, changeVolume, audio } = audioController;
+
+const lyricsHandler = useLyricsHandler(t);
+const { lyricsData, originalLyrics, showLyrics, scrollAmount, SongTips, toggleLyrics, getLyrics, highlightCurrentChar, resetLyricsHighlight } = lyricsHandler;
+
+const progressBar = useProgressBar(audio, resetLyricsHighlight);
+const { progressWidth, isProgressDragging, showTimeTooltip, tooltipPosition, tooltipTime, climaxPoints, formatTime, getMusicHighlights, onProgressDragStart, updateProgressFromEvent, updateTimeTooltip, hideTimeTooltip } = progressBar;
+
+const playbackMode = usePlaybackMode(t, audio);
+const { currentPlaybackModeIndex, currentPlaybackMode, playedSongsStack, currentStackIndex, togglePlaybackMode } = playbackMode;
+
+const mediaSession = useMediaSession();
+
+const songQueue = useSongQueue(t, musicQueueStore);
+const { currentSong, NextSong, addSongToQueue, addCloudMusicToQueue, addToNext, getPlaylistAllSongs, addPlaylistToQueue, addCloudPlaylistToQueue } = songQueue;
+
+// 计算属性
+const formattedCurrentTime = computed(() => formatTime(currentTime.value));
+const formattedDuration = computed(() => formatTime(currentSong.value?.timeLength || 0));
+
+// 播放歌曲
+const playSong = async (song) => {
+    try {
+        console.log('[PlayerControl] 开始播放歌曲:', song.name);
+
+        // 检查歌曲对象和URL是否有效
+        if (!song || !song.url) {
+            console.error('[PlayerControl] 无效的歌曲或URL:', song);
+            window.$modal.alert(t('bo-fang-shi-bai-qu-mu-wei-kong'));
+            playing.value = false;
+            return;
+        }
+
+        currentSong.value = structuredClone(song);
+        lyricsData.value = [];
+
+        audio.src = song.url;
+        console.log('[PlayerControl] 设置音频源:', song.url);
+
+        try {
+            mediaSession.changeMediaSession(currentSong.value);
+            const playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                await playPromise;
+                console.log('[PlayerControl] 成功开始播放歌曲');
+                playing.value = true;
+            }
+        } catch (playError) {
+            console.warn('[PlayerControl] 播放被中断，尝试重新播放:', playError);
+            // 等待一小段时间后重试
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            try {
+                await audio.play();
+                playing.value = true;
+            } catch (retryError) {
+                console.error('[PlayerControl] 重试播放失败:', retryError);
+                window.$modal.alert(t('bo-fang-shi-bai'));
+                playing.value = false;
+            }
+        }
+
+        // 设置标题
+        if (song.name && song.author) {
+            document.title = song.name + " - " + song.author;
+        } else if (song.name) {
+            document.title = song.name;
+        }
+
+        // 保存当前歌曲到本地存储
+        localStorage.setItem('current_song', JSON.stringify(currentSong.value));
+
+        // 获取歌词
+        getLyrics(currentSong.value.hash);
+
         getVip();
         getMusicHighlights(currentSong.value.hash);
     } catch (error) {
-        console.error('播放音乐时发生错误:', error);
+        console.error('[PlayerControl] 播放音乐时发生错误:', error);
         playing.value = false;
+        window.$modal.alert(t('bo-fang-chu-cuo'));
     }
-};
-
-// 获取音乐高潮
-const getMusicHighlights = async (hash) => {
-    try {
-        const response = await get(`/song/climax?hash=${hash}`);
-        if (response.status !== 1) {
-            climaxPoints.value = [];
-            return;
-        }
-        climaxPoints.value = response.data.map(point => ({
-            position: (parseInt(point.start_time) / 1000 / audio.duration) * 100,
-            duration: parseInt(point.timelength) / 1000
-        }));
-    } catch (error) {
-        climaxPoints.value = [];
-    }
-};
-
-// 从队列中播放歌曲
-const playSongFromQueue = (direction) => {
-    if (musicQueueStore.queue.length === 0) {
-        window.$modal.alert(t('ni-huan-mei-you-tian-jia-ge-quo-kuai-qu-tian-jia-ba'));
-        return;
-    }
-
-    if (direction == 'next') {
-        // 添加下一首播放
-        if (NextSong.value.length > 0) {
-            addSongToQueue(NextSong.value[0].hash, NextSong.value[0].name, NextSong.value[0].img, NextSong.value[0].author);
-            NextSong.value.shift();
-            return;
-        }
-    }
-
-    const currentIndex = musicQueueStore.queue.findIndex(song => song.hash === currentSong.value.hash);
-    let targetIndex;
-    if (currentIndex == -1) {
-        targetIndex = 0;
-    } else if (currentPlaybackModeIndex.value == 0) {
-        if (direction === 'previous' && currentStackIndex.value > 0) {
-            currentStackIndex.value--;
-            targetIndex = playedSongsStack.value[currentStackIndex.value];
-        } else if (direction === 'previous') {
-            let newIndex;
-            do {
-                newIndex = Math.floor(Math.random() * musicQueueStore.queue.length);
-            } while (playedSongsStack.value.length > 0 && newIndex === playedSongsStack.value[currentStackIndex.value]);
-            
-            playedSongsStack.value.unshift(newIndex);
-            targetIndex = newIndex;
-        } else if (direction === 'next' && currentStackIndex.value < playedSongsStack.value.length - 1) {
-            currentStackIndex.value++;
-            targetIndex = playedSongsStack.value[currentStackIndex.value];
-        } else if (direction === 'next') {
-            let newIndex;
-            do {
-                newIndex = Math.floor(Math.random() * musicQueueStore.queue.length);
-            } while (playedSongsStack.value.length > 0 && newIndex === playedSongsStack.value[currentStackIndex.value]);
-            
-            if (currentStackIndex.value < playedSongsStack.value.length - 1) {
-                playedSongsStack.value = playedSongsStack.value.slice(0, currentStackIndex.value + 1);
-            }
-            
-            playedSongsStack.value.push(newIndex);
-            currentStackIndex.value = playedSongsStack.value.length - 1;
-            targetIndex = newIndex;
-        }
-    } else {
-        targetIndex = direction === 'previous'
-            ? (currentIndex === 0 ? musicQueueStore.queue.length - 1 : currentIndex - 1)
-            : (currentIndex + 1) % musicQueueStore.queue.length;
-    }
-    addSongToQueue(
-        musicQueueStore.queue[targetIndex].hash,
-        musicQueueStore.queue[targetIndex].name,
-        musicQueueStore.queue[targetIndex].img,
-        musicQueueStore.queue[targetIndex].author
-    );
 };
 
 // 切换播放/暂停
 const togglePlayPause = async () => {
     if (!currentSong.value.hash) {
+        console.log('[PlayerControl] 没有当前歌曲，尝试播放队列中的下一首');
         playSongFromQueue('next');
         return;
     } else if (!audio.src) {
-        addSongToQueue(
-            currentSong.value.hash,
-            currentSong.value.name,
-            currentSong.value.img,
-            currentSong.value.author,
-            false
-        );
-        return;
+        console.log('[PlayerControl] 音频源为空，尝试重新设置');
+        if (currentSong.value.url) {
+            console.log('[PlayerControl] 从当前歌曲获取URL:', currentSong.value.url);
+            audio.src = currentSong.value.url;
+        } else {
+            console.log('[PlayerControl] 重新从队列获取歌曲');
+            const songIndex = musicQueueStore.queue.findIndex(song => song.hash === currentSong.value.hash);
+            if (songIndex !== -1) {
+                const song = musicQueueStore.queue[songIndex];
+                if (song.url) {
+                    console.log('[PlayerControl] 从队列中的歌曲获取URL:', song.url);
+                    currentSong.value.url = song.url;
+                    audio.src = song.url;
+                } else if (song.isCloud) {
+                    console.log('[PlayerControl] 云音乐没有URL，重新获取');
+                    addCloudMusicToQueue(song.hash, song.name, song.author, song.timeLength);
+                    return;
+                } else {
+                    console.log('[PlayerControl] 歌曲没有URL，重新获取');
+                    addSongToQueue(song.hash, song.name, song.img, song.author);
+                    return;
+                }
+            } else {
+                console.log('[PlayerControl] 歌曲不在队列中，播放下一首');
+                playSongFromQueue('next');
+                return;
+            }
+        }
     }
 
     if (playing.value) {
+        console.log('[PlayerControl] 暂停播放');
         audio.pause();
         playing.value = false;
     } else {
+        console.log('[PlayerControl] 开始播放');
         try {
             await audio.play();
             playing.value = true;
         } catch (retryError) {
+            console.error('[PlayerControl] 播放失败:', retryError);
             window.$modal.alert(t('bo-fang-shi-bai'));
         }
     }
+};
+
+// 从队列中播放歌曲
+const playSongFromQueue = async (direction) => {
+    if (musicQueueStore.queue.length === 0) {
+        console.log('[PlayerControl] 队列为空');
+        window.$modal.alert(t('ni-huan-mei-you-tian-jia-ge-quo-kuai-qu-tian-jia-ba'));
+        return;
+    }
+
+    console.log(`[PlayerControl] 从队列播放${direction === 'next' ? '下' : '上'}一首`);
+
+    if (direction == 'next' && NextSong.value.length > 0) {
+        // 添加下一首播放
+        console.log('[PlayerControl] 播放预定的下一首:', NextSong.value[0].name);
+        const songData = NextSong.value[0];
+        NextSong.value.shift();
+
+        try {
+            const result = await addSongToQueue(songData.hash, songData.name, songData.img, songData.author);
+            // 如果返回了歌曲对象，直接播放
+            if (result && result.song) {
+                console.log('[PlayerControl] 获取到下一首歌曲，开始播放:', result.song.name);
+                await playSong(result.song);
+            } else if (result && result.shouldPlayNext) {
+                console.log('[PlayerControl] 预定的下一首无法播放，3秒后自动切换下一首');
+                setTimeout(() => {
+                    playSongFromQueue('next');
+                }, 3000);
+            } else {
+                console.error('[PlayerControl] 无法获取下一首歌曲信息');
+            }
+        } catch (error) {
+            console.error('[PlayerControl] 获取下一首歌曲时出错:', error);
+        }
+        return;
+    }
+
+    const currentIndex = musicQueueStore.queue.findIndex(song => song.hash === currentSong.value.hash);
+    console.log('[PlayerControl] 当前歌曲索引:', currentIndex);
+    let targetIndex;
+
+    // 处理不同播放模式
+    if (currentIndex === -1) {
+        targetIndex = 0;
+    } else if (currentPlaybackModeIndex.value === 0) {
+        // 随机播放
+        targetIndex = handleRandomPlayback(direction, currentIndex);
+    } else {
+        // 顺序播放或单曲循环
+        targetIndex = direction === 'previous'
+            ? (currentIndex === 0 ? musicQueueStore.queue.length - 1 : currentIndex - 1)
+            : (currentIndex + 1) % musicQueueStore.queue.length;
+    }
+
+    console.log('[PlayerControl] 目标歌曲索引:', targetIndex);
+
+    // 播放目标索引的歌曲
+    const targetSong = musicQueueStore.queue[targetIndex];
+    console.log('[PlayerControl] 开始播放目标歌曲:', targetSong.name);
+
+    try {
+        let result;
+        if (targetSong.isCloud) {
+            result = await addCloudMusicToQueue(
+                targetSong.hash,
+                targetSong.name,
+                targetSong.author,
+                targetSong.timeLength,
+                false // 不重置播放位置，只获取URL
+            );
+        } else {
+            result = await addSongToQueue(
+                targetSong.hash,
+                targetSong.name,
+                targetSong.img,
+                targetSong.author,
+                false // 不重置播放位置，只获取URL
+            );
+        }
+
+        // 检查返回结果并播放
+        if (result && result.song) {
+            console.log('[PlayerControl] 成功获取歌曲URL，开始播放:', result.song.name);
+            await playSong(result.song);
+        } else if (result && result.shouldPlayNext) {
+            console.log('[PlayerControl] 当前歌曲无法播放，3秒后自动切换到下一首');
+            setTimeout(() => {
+                playSongFromQueue('next');
+            }, 3000);
+        } else {
+            console.error('[PlayerControl] 无法获取歌曲URL');
+        }
+    } catch (error) {
+        console.error('[PlayerControl] 切换歌曲时发生错误:', error);
+        // 如果出错，尝试播放下一首
+        if (direction === 'next') {
+            console.log('[PlayerControl] 发生错误，3秒后尝试播放下一首');
+            setTimeout(() => {
+                playSongFromQueue('next');
+            }, 3000);
+        }
+    }
+};
+
+// 处理随机播放逻辑
+const handleRandomPlayback = (direction, currentIndex) => {
+    if (direction === 'previous' && currentStackIndex.value > 0) {
+        // 返回上一首随机歌曲
+        currentStackIndex.value--;
+        return playedSongsStack.value[currentStackIndex.value];
+    } else if (direction === 'previous') {
+        // 向前随机一首新歌曲
+        let newIndex;
+        do {
+            newIndex = Math.floor(Math.random() * musicQueueStore.queue.length);
+        } while (playedSongsStack.value.length > 0 && newIndex === playedSongsStack.value[currentStackIndex.value]);
+
+        playedSongsStack.value.unshift(newIndex);
+        return newIndex;
+    } else if (direction === 'next' && currentStackIndex.value < playedSongsStack.value.length - 1) {
+        // 前进到下一首已随机过的歌曲
+        currentStackIndex.value++;
+        return playedSongsStack.value[currentStackIndex.value];
+    } else if (direction === 'next') {
+        // 随机一首新歌曲
+        let newIndex;
+        do {
+            newIndex = Math.floor(Math.random() * musicQueueStore.queue.length);
+        } while (playedSongsStack.value.length > 0 && newIndex === playedSongsStack.value[currentStackIndex.value]);
+
+        // 截断未来的历史记录
+        if (currentStackIndex.value < playedSongsStack.value.length - 1) {
+            playedSongsStack.value = playedSongsStack.value.slice(0, currentStackIndex.value + 1);
+        }
+
+        // 添加新歌曲到历史记录
+        playedSongsStack.value.push(newIndex);
+        currentStackIndex.value = playedSongsStack.value.length - 1;
+        return newIndex;
+    }
+};
+
+// 音量拖动相关函数
+const setVolumeOnClick = (event) => {
+    const slider = event.target.closest('.volume-slider');
+    if (slider) {
+        const sliderWidth = slider.offsetWidth;
+        const offsetX = event.offsetX;
+        volume.value = Math.round((offsetX / sliderWidth) * 100);
+        changeVolume();
+        console.log('[PlayerControl] 点击设置音量:', volume.value, '实际audio.volume:', audio.volume);
+    }
+};
+
+const onDragStart = (event) => {
+    sliderElement.value = event.target.closest('.volume-slider');
+    if (sliderElement.value) {
+        isDragging.value = true;
+        setVolumeOnClick(event);
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('mouseup', onDragEnd);
+    }
+};
+
+const onDrag = (event) => {
+    if (isDragging.value && sliderElement.value) {
+        const sliderWidth = sliderElement.value.offsetWidth;
+        const rect = sliderElement.value.getBoundingClientRect();
+        const offsetX = event.clientX - rect.left;
+        const newVolume = Math.max(0, Math.min(100, Math.round((offsetX / sliderWidth) * 100)));
+        volume.value = newVolume;
+        changeVolume();
+        console.log('[PlayerControl] 拖动设置音量:', volume.value, '实际audio.volume:', audio.volume);
+    }
+};
+
+const onDragEnd = () => {
+    isDragging.value = false;
+    sliderElement.value = null;
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', onDragEnd);
+};
+
+// 音量滚轮事件
+const handleVolumeScroll = (event) => {
+    event.preventDefault();
+    const delta = Math.sign(event.deltaY) * -1;
+    volume.value = Math.min(Math.max(volume.value + delta * 10, 0), 100);
+    changeVolume();
+    console.log('[PlayerControl] 滚轮设置音量:', volume.value, '实际audio.volume:', audio.volume);
+};
+
+// 歌词滚轮控制播放进度
+const handleLyricsWheel = (event) => {
+    if (!audio.duration || !currentSong.value?.hash) return;
+    
+    event.preventDefault();
+    // 计算调整时间，向下滚动为前进，向上滚动为后退，每次5秒
+    const delta = Math.sign(event.deltaY);
+    const adjustmentSeconds = 5 * delta;
+    
+    // 计算新时间，并确保在有效范围内
+    const newTime = Math.max(0, Math.min(audio.duration, audio.currentTime + adjustmentSeconds));
+    
+    // 设置新时间
+    audio.currentTime = newTime;
+    progressWidth.value = (newTime / audio.duration) * 100;
+    console.log(`[PlayerControl] 滚轮${delta > 0 ? '前进' : '后退'}${Math.abs(adjustmentSeconds)}秒，当前进度:`, newTime);
+};
+
+// 键盘快捷键
+const handleKeyDown = (event) => {
+    const isInputFocused = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+    if (isInputFocused) return;
+
+    switch (event.code) {
+        case 'Space':
+            event.preventDefault();
+            togglePlayPause();
+            break;
+        case 'ArrowLeft':
+            playSongFromQueue('previous');
+            break;
+        case 'ArrowRight':
+            playSongFromQueue('next');
+            break;
+        case 'Escape':
+            if (showLyrics.value) {
+                toggleLyrics();
+            }
+            break;
+    }
+};
+
+// 初始化系统媒体快捷键
+const setupMediaShortcuts = () => {
+    if (!isElectron()) return;
+
+    window.electron.ipcRenderer.on('play-previous-track', () => playSongFromQueue('previous'));
+    window.electron.ipcRenderer.on('play-next-track', () => playSongFromQueue('next'));
+    window.electron.ipcRenderer.on('volume-up', () => {
+        volume.value = Math.min(volume.value + 10, 100);
+        changeVolume();
+    });
+    window.electron.ipcRenderer.on('volume-down', () => {
+        volume.value = Math.max(volume.value - 10, 0);
+        changeVolume();
+    });
+    window.electron.ipcRenderer.on('toggle-play-pause', togglePlayPause);
+    window.electron.ipcRenderer.on('toggle-mute', toggleMute);
+    window.electron.ipcRenderer.on('toggle-like', () => playlistSelect.value.toLike());
+    window.electron.ipcRenderer.on('toggle-mode', togglePlaybackMode);
 };
 
 // 切换静音
@@ -391,357 +638,155 @@ const toggleMute = () => {
         volume.value = audio.volume * 100;
     }
     localStorage.setItem('player_volume', volume.value);
+    console.log('[PlayerControl] 切换静音:', isMuted.value, '音量:', volume.value, '实际audio.volume:', audio.volume);
 };
 
-// 更新音量的点击处理函数
-const setVolumeOnClick = (event) => {
-    const slider = event.target.closest('.volume-slider');
-    if (slider) {
-        const sliderWidth = slider.offsetWidth;
-        const offsetX = event.offsetX;
-        volume.value = Math.round((offsetX / sliderWidth) * 100);
-        changeVolume();
-    }
+// 添加拖动相关状态变量
+const isDraggingLyrics = ref(false);
+const lyricsDragStartY = ref(0);
+const lyricsDragStartTime = ref(0);
+const tempTime = ref(0);
+
+// 开始拖动歌词
+const startLyricsDrag = (event) => {
+    if (!audio.duration || !currentSong.value?.hash) return;
+    
+    isDraggingLyrics.value = true;
+    lyricsDragStartY.value = event.clientY;
+    lyricsDragStartTime.value = audio.currentTime;
+    tempTime.value = audio.currentTime;
+    
+    console.log('[PlayerControl] 开始拖动歌词');
 };
 
-// 开始拖拽时触发，初始化拖拽并实时更新音量
-const onDragStart = (event) => {
-    sliderElement = event.target.closest('.volume-slider');
-    if (sliderElement) {
-        isDragging.value = true;
-        setVolumeOnClick(event);
-        document.addEventListener('mousemove', onDrag);
-        document.addEventListener('mouseup', onDragEnd);
-    }
+// 处理歌词拖动
+const handleLyricsDrag = (event) => {
+    if (!isDraggingLyrics.value) return;
+    
+    // 计算垂直移动距离
+    const deltaY = event.clientY - lyricsDragStartY.value;
+    
+    // 根据移动距离计算时间调整，向上拖动前进，向下拖动后退
+    // 灵敏度因子：每移动100像素调整30秒
+    const sensitivityFactor = 30 / 100;
+    const timeAdjustment = -deltaY * sensitivityFactor;
+    
+    // 计算新时间并确保在有效范围内
+    tempTime.value = Math.max(0, Math.min(audio.duration, lyricsDragStartTime.value + timeAdjustment));
+    
+    // 更新进度条显示
+    progressWidth.value = (tempTime.value / audio.duration) * 100;
+    
+    console.log(`[PlayerControl] 拖动歌词预览进度: ${tempTime.value.toFixed(2)}s / ${audio.duration.toFixed(2)}s`);
 };
 
-// 拖拽过程中的音量更新
-const onDrag = (event) => {
-    if (isDragging.value && sliderElement) {
-        const sliderWidth = sliderElement.offsetWidth;
-        const rect = sliderElement.getBoundingClientRect();
-        const offsetX = event.clientX - rect.left;
-        const newVolume = Math.max(0, Math.min(100, Math.round((offsetX / sliderWidth) * 100)));
-        volume.value = newVolume;
-        changeVolume();
-    }
+// 结束拖动歌词
+const endLyricsDrag = () => {
+    if (!isDraggingLyrics.value) return;
+    isDraggingLyrics.value = false;
+    audio.currentTime = tempTime.value;
+    console.log('[PlayerControl] 结束拖动歌词，设置最终进度:', tempTime.value);
 };
 
-const onDragEnd = () => {
-    isDragging.value = false;
-    sliderElement = null;
-    document.removeEventListener('mousemove', onDrag);
-    document.removeEventListener('mouseup', onDragEnd);
-};
+// 组件挂载
+onMounted(() => {
+    console.log('[PlayerControl] 组件挂载');
 
-// 音量调节
-const changeVolume = () => {
-    audio.volume = volume.value / 100;
-    localStorage.setItem('player_volume', volume.value);
-    isMuted.value = volume.value === 0;
-};
+    // 初始化音频设置
+    audioController.initAudio();
 
-// 获取歌单全部歌曲
-const getPlaylistAllSongs = async (id) => {
-    try {
-        let allSongs = [];
-        for (let page = 1; page <= 4; page++) {
-            const url = `/playlist/track/all?id=${id}&pagesize=300&page=${page}`;
-            const response = await get(url);
-            if (response.status !== 1) {
-                window.$modal.alert(t('huo-qu-ge-dan-shi-bai'));
-                return;
-            }
-            if (Object.keys(response.data.info).length === 0) break;
-            allSongs = allSongs.concat(response.data.info);
-            if (response.data.info.length < 300) break;
-        }
-        addPlaylistToQueue(allSongs);
-    } catch (error) {
-        console.error(error);
-        window.$modal.alert(t('huo-qu-ge-dan-shi-bai'));
-    }
-}
+    // 初始化歌曲和播放状态
+    const current_song = localStorage.getItem('current_song');
+    if (current_song) {
+        try {
+            const savedSong = JSON.parse(current_song);
+            currentSong.value = savedSong;
 
-// 添加歌单到播放列表
-const addPlaylistToQueue = async (info) => {
-    musicQueueStore.clearQueue();
-    const songs = info.map((song, index) => {
-        return {
-            id: index + 1,
-            hash: song.hash,
-            name: song.name,
-            img: song.cover?.replace("{size}", 480) || './assets/images/ico.png',
-            author: song.author,
-            timeLength: song.timelen
-        };
-    });
-    musicQueueStore.queue = songs;
-    let startIndex = 0;
-    if (currentPlaybackModeIndex.value == 0) {
-        startIndex = Math.floor(Math.random() * songs.length);
-    }
-    addSongToQueue(songs[startIndex].hash, songs[startIndex].name, songs[startIndex].img, songs[startIndex].author);
-};
-
-// 添加歌曲到队列并播放的方法
-const addSongToQueue = async (hash, name, img, author, isReset = true) => {
-    const currentSongHash = currentSong.value.hash;
-    try {
-        clearTimeout(timeoutId.value);
-        currentSong.value.author = author;
-        currentSong.value.name = name;
-        currentSong.value.img = img;
-        currentSong.value.hash = hash;
-        const settings = JSON.parse(localStorage.getItem('settings'));
-        const data = {
-            hash: hash
-        }
-        if(!MoeAuth.isAuthenticated) data.free_part = 1;
-        if(MoeAuth.isAuthenticated && settings?.quality === 'lossless' && settings?.qualityCompatibility === 'off') data.quality = 'flac';
-        if(MoeAuth.isAuthenticated && settings?.quality === 'hires' && settings?.qualityCompatibility === 'off') data.quality = 'high';
-
-        const response = await get('/song/url',data);
-        if (response.status !== 1) {
-            currentSong.value.author = currentSong.value.name = t('huo-qu-yin-le-shi-bai');
-            if (response.status == 3) {
-                currentSong.value.name = t('gai-ge-qu-zan-wu-ban-quan')
-            }
-            if (musicQueueStore.queue.length === 0) return;
-            currentSong.value.author = t('3-miao-hou-zi-dong-qie-huan-xia-yi-shou');
-            timeoutId.value = setTimeout(() => {
-                playSongFromQueue('next');
-            }, 3000);
-            return;
-        }
-
-        if (response.extName == 'mp4') {
-            addSongToQueue(hash, name, img, author, false);
-            return;
-        }
-        
-        if (isReset) {
-            localStorage.setItem('player_progress', 0);
-            audio.currentTime = progressWidth.value = 0;
-        }
-
-        const existingSongIndex = musicQueueStore.queue.findIndex(song => song.hash === hash);
-
-        if (existingSongIndex === -1) {
-            const song = {
-                id: musicQueueStore.queue.length + 1,
-                hash: hash,
-                name: name,
-                img: img,
-                author: author,
-                timeLength: response.timeLength,
-                url: response.url[0]
-            };
-
-            const currentIndex = musicQueueStore.queue.findIndex(song => song.hash == currentSongHash);
-            if (currentIndex !== -1) {
-                musicQueueStore.queue.splice(currentIndex + 1, 0, song);
+            // 如果有URL，恢复播放源
+            if (savedSong.url) {
+                console.log('[PlayerControl] 从缓存恢复音频源:', savedSong.url);
+                audio.src = savedSong.url;
             } else {
-                musicQueueStore.addSong(song);
+                console.log('[PlayerControl] 缓存的歌曲没有URL');
             }
-            playSong(song);
-        } else {
-            const updatedQueue = [...musicQueueStore.queue];
-            const newSong = {
-                id: musicQueueStore.queue[existingSongIndex].id,
-                hash: hash,
-                name: name,
-                img: img,
-                author: author,
-                timeLength: response.timeLength,
-                url: response.url[0]
-            };
-            updatedQueue[existingSongIndex] = newSong;
-            musicQueueStore.setQueue(updatedQueue);
-            playSong(newSong);
+        } catch (error) {
+            console.error('[PlayerControl] 解析保存的歌曲信息失败:', error);
         }
-    } catch (error) {
-        currentSong.value.author = currentSong.value.name = t('huo-qu-yin-le-di-zhi-shi-bai');
-        if (musicQueueStore.queue.length === 0) return;
-        currentSong.value.author = t('3-miao-hou-zi-dong-qie-huan-xia-yi-shou');
-        timeoutId.value = setTimeout(() => {
-            playSongFromQueue('next');
-        }, 3000);
+    } else {
+        console.log('[PlayerControl] 没有缓存的歌曲信息');
     }
-};
 
-// 音乐播放结束后自动播放下一首
-audio.addEventListener('ended', () => {
-    if (currentPlaybackModeIndex.value == 2) return;
-    playSongFromQueue('next');
-});
-const handleAudioEvent = (event) => {
-    playing.value = event.type === 'play';
-    if(isElectron()){
-        window.electron.ipcRenderer.send('play-pause-action', playing.value);
+    // 初始化播放模式
+    currentPlaybackModeIndex.value = localStorage.getItem('player_playback_mode') || 1;
+    audio.loop = currentPlaybackModeIndex.value == 2;
+
+    // 初始化设置
+    const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+    if (settings) {
+        lyricsBackground.value = settings?.lyricsBackground || 'on';
+        lyricsFontSize.value = settings?.lyricsFontSize || '24px';
     }
-};
 
-audio.addEventListener('pause', handleAudioEvent);
-audio.addEventListener('play', handleAudioEvent);
-
-const toggleLyrics = async () => {
-    showLyrics.value = !showLyrics.value;
-    SongTips.value = t('huo-qu-ge-ci-zhong');
-    if (!currentSong.value) return;
-    try {
-        if (lyricsData.value.length != 0) return;
-        getLyrics(currentSong.value.hash)
-    } catch (error) {
-        SongTips.value = t('huo-qu-ge-ci-shi-bai');
-    }
-};
-
-// 请求歌词
-const getLyrics = async (hash) => {
-    try {
-        const savedConfig = JSON.parse(localStorage.getItem('settings'));
-        if (!showLyrics.value && savedConfig?.desktopLyrics === 'off') return;
-        const lyricSearchResponse = await get(`/search/lyric?hash=${hash}`);
-        if (lyricSearchResponse.status !== 200 || lyricSearchResponse.candidates.length === 0) {
-            SongTips.value = t('zan-wu-ge-ci');
-            return;
-        }
-        const lyricResponse = await get(`/lyric?id=${lyricSearchResponse.candidates[0].id}&accesskey=${lyricSearchResponse.candidates[0].accesskey}&decode=true`);
-        if (lyricResponse.status !== 200) {
-            SongTips.value = t('huo-qu-ge-ci-shi-bai');
-            return;
-        }
-        parseLyrics(lyricResponse.decodeContent);
-        centerFirstLine();
-    } catch (error) {
-        SongTips.value = t('huo-qu-ge-ci-shi-bai');
-        return;
-    }
-}
-
-const parseLyrics = (text) => {
-    const lines = text.split('\n');
-    const parsedLyrics = lines
-        .map((line) => {
-            const match = line.match(/^\[(\d+),(\d+)\](.*)/);
-            if (match) {
-                const time = parseInt(match[1]);
-                const duration = parseInt(match[2]);
-                const lyric = match[3].replace(/<.*?>/g, '');
-                const characters = lyric.split('').map((char, index) => ({
-                    char,
-                    startTime: time + (index * duration) / lyric.length,
-                    endTime: time + ((index + 1) * duration) / lyric.length,
-                    highlighted: false,
-                }));
-                return { characters };
-            }
-            return null;
-        })
-        .filter((line) => line);
-    lyricsData.value = parsedLyrics;
-};
-
-// 添加到下一首 
-const addToNext = async (hash, name, img, author, timeLength) => {
-    const existingSongIndex = musicQueueStore.queue.findIndex(song => song.hash === hash);
-    if (existingSongIndex !== -1) {
-        queueList.value.removeSongFromQueue(existingSongIndex);
-    }
-    const currentIndex = musicQueueStore.queue.findIndex(song => song.hash === currentSong.value.hash);
-    musicQueueStore.queue.splice(currentIndex !== -1 ? currentIndex + 1 : musicQueueStore.queue.length, 0, {
-        id: musicQueueStore.queue.length + 1,
-        hash: hash,
-        name: name,
-        img: img,
-        author: author,
-        timeLength: timeLength,
+    // 设置媒体会话
+    mediaSession.initMediaSession({
+        togglePlayPause,
+        playPrevious: () => playSongFromQueue('previous'),
+        playNext: () => playSongFromQueue('next')
     });
 
-    NextSong.value.push({
-        id: musicQueueStore.queue.length + 1,
-        hash: hash,
-        name: name,
-        img: img,
-        author: author,
-        timeLength: timeLength,
-    });
-};
-const centerFirstLine = () => {
-    const lyricsContainer = document.getElementById('lyrics-container');
-    if (!lyricsContainer) return;
-    const containerHeight = lyricsContainer.offsetHeight;
-    const lyricsElement = document.getElementById('lyrics');
-    if (!lyricsElement) return;
-    const lyricsHeight = lyricsElement.offsetHeight;
-    scrollAmount.value = (containerHeight - lyricsHeight) / 2;
-};
-const throttle = (func, delay) => {
-    let lastTime = 0;
-    return function (...args) {
-        const now = Date.now();
-        if (now - lastTime >= delay) {
-            lastTime = now;
-            func.apply(this, args);
-        }
-    };
-};
-// 监听方法
-const highlightCurrentChar = (currentTime) => {
-    lyricsData.value.forEach((lineData, index) => {
-        let isLineHighlighted = false;
-        lineData.characters.forEach((charData) => {
-            if (currentTime * 1000 >= charData.startTime && !charData.highlighted) {
-                charData.highlighted = true;
-                isLineHighlighted = true;
-            }
-        });
+    // 设置系统媒体快捷键
+    setupMediaShortcuts();
 
-        if (isLineHighlighted && currentLineIndex !== index) {
-            currentLineIndex = index;
-            const lyricsContainer = document.getElementById('lyrics-container');
-            if (!lyricsContainer) return;
-            const containerHeight = lyricsContainer.offsetHeight;
-            const lineElement = document.querySelectorAll('.line')[index];
-            if (lineElement) {
-                const lineHeight = lineElement.offsetHeight;
-                scrollAmount.value = -lineElement.offsetTop + (containerHeight / 2) - (lineHeight / 2); // 计算中心位置
-            }
+    // 恢复播放进度
+    if (current_song && localStorage.getItem('player_progress')) {
+        const savedProgress = localStorage.getItem('player_progress');
+        audio.currentTime = savedProgress;
+        console.log('[PlayerControl] 恢复播放进度:', savedProgress);
+        progressWidth.value = (audio.currentTime / currentSong.value.timeLength) * 100;
+    }
+
+    // 获取VIP
+    getVip();
+
+    // 添加事件监听
+    document.addEventListener('keydown', handleKeyDown);
+
+    // 设置特定于PlayerControl的监听器
+    audio.addEventListener('pause', () => {
+        playing.value = false;
+        console.log('[PlayerControl] 暂停事件');
+        if (isElectron()) {
+            window.electron.ipcRenderer.send('play-pause-action', playing.value, audio.currentTime);
         }
     });
-};
-// 节流处理
-const throttledHighlight = throttle(() => {
-    currentTime.value = audio.currentTime; // 实时更新当前时间
-    if (!isProgressDragging.value) {  // 只在非拖动状态更新进度条
-        progressWidth.value = (currentTime.value / audio.duration) * 100;
-    }
-    const savedConfig = JSON.parse(localStorage.getItem('settings'));
-    if (audio && lyricsData.value) {
-        if (showLyrics.value) {
-            highlightCurrentChar(audio.currentTime);
-        }
-        if (isElectron() && savedConfig?.desktopLyrics === 'on') {
-            window.electron.ipcRenderer.send('lyrics-data', { currentTime: audio.currentTime, lyricsData: JSON.parse(JSON.stringify(lyricsData.value)) });
-        }
-    } else if (isElectron() && savedConfig?.desktopLyrics === 'on') {
-        getLyrics(currentSong.value.hash)
-    }
-    localStorage.setItem('player_progress', audio.currentTime);
-}, 200);
-// 启动监听
-audio.addEventListener('timeupdate', throttledHighlight);
 
-defineExpose({
-    addSongToQueue,
-    getPlaylistAllSongs,
-    addPlaylistToQueue,
-    addToNext,
-    currentSong
+    audio.addEventListener('play', () => {
+        playing.value = true;
+        console.log('[PlayerControl] 播放事件');
+        if (isElectron()) {
+            window.electron.ipcRenderer.send('play-pause-action', playing.value, audio.currentTime);
+        }
+    });
+
+    audio.addEventListener('error', (e) => {
+        console.error('[PlayerControl] 音频错误:', e);
+        window.$modal.alert(t('yin-pin-jia-zai-shi-bai'));
+    });
+
+    console.log('[PlayerControl] 音频初始化完成');
 });
 
+// 组件卸载清理
 onUnmounted(() => {
+    // 使用AudioController的销毁方法清理基本监听器
+    audioController.destroy();
+
+    // 清理组件特定的监听器
+    audio.removeEventListener('pause', () => { });
+    audio.removeEventListener('play', () => { });
+    audio.removeEventListener('error', () => { });
+
+    // 清理系统媒体快捷键
     if (isElectron()) {
         window.electron.ipcRenderer.removeAllListeners('play-previous-track');
         window.electron.ipcRenderer.removeAllListeners('play-next-track');
@@ -752,281 +797,127 @@ onUnmounted(() => {
         window.electron.ipcRenderer.removeAllListeners('toggle-like');
         window.electron.ipcRenderer.removeAllListeners('toggle-mode');
     }
+
+    // 清理键盘事件
     document.removeEventListener('keydown', handleKeyDown);
 });
-onBeforeUnmount(() => {
-    document.removeEventListener('focus', checkFocus, true);
-    document.removeEventListener('blur', checkFocus, true);
-});
-const isElectron = () => {
-    return typeof window !== 'undefined' && typeof window.electron !== 'undefined';
-};
-const handleVolumeScroll = (event) => {
-    event.preventDefault();
-    const delta = Math.sign(event.deltaY) * -1;
-    volume.value = Math.min(Math.max(volume.value + delta * 10, 0), 100);
-    changeVolume();
-};
-const getVip = async() => {
-    if(!MoeAuth.isAuthenticated) return;
-    const lastRequestTime = localStorage.getItem('lastVipRequestTime');
-    if (lastRequestTime) {
-        const now = new Date().getTime();
-        const elapsedTime = now - parseInt(lastRequestTime);
-        const threeHours = 3 * 60 * 60 * 1000;
-        if (elapsedTime < threeHours) {
-            return;
+
+// 对外暴露接口
+defineExpose({
+    addSongToQueue: async (hash, name, img, author) => {
+        console.log('[PlayerControl] 外部调用addSongToQueue:', name);
+        const result = await addSongToQueue(hash, name, img, author);
+        if (result && result.song) {
+            await playSong(result.song);
+        } else if (result && result.shouldPlayNext) {
+            console.log('[PlayerControl] 歌曲无法播放，3秒后自动切换到下一首');
+            setTimeout(() => {
+                playSongFromQueue('next');
+            }, 3000);
         }
-    }
-    try {
-        await get('/youth/vip');
-    } catch (error) {
-        console.error('领取VIP失败:', error);
-    }
-    localStorage.setItem('lastVipRequestTime', new Date().getTime().toString());
-}
+        return result;
+    },
+    getPlaylistAllSongs,
+    addPlaylistToQueue: async (info, append = false) => {
+        const songs = await addPlaylistToQueue(info, append);
+        if (songs && songs.length > 0 && !append) {
+            // 根据播放模式决定播放哪首歌曲
+            let songIndex = 0;
 
-const handleShortcut = (event) => {
-    if (isElectron()) {
-        window.electron.ipcRenderer.on('play-previous-track', () => playSongFromQueue('previous'));
-        window.electron.ipcRenderer.on('play-next-track', () => playSongFromQueue('next'));
-        window.electron.ipcRenderer.on('volume-up', () => {
-            volume.value = Math.min(volume.value + 10, 100);
-            changeVolume();
-        });
-        window.electron.ipcRenderer.on('volume-down', () => {
-            volume.value = Math.max(volume.value - 10, 0);
-            changeVolume();
-        });
-        window.electron.ipcRenderer.on('toggle-play-pause', () => {
-            togglePlayPause();
-        });
-        window.electron.ipcRenderer.on('toggle-mute', () => {
-            toggleMute();
-        });
-        window.electron.ipcRenderer.on('toggle-like', () => {
-            playlistSelect.value.toLike();
-        });
-        window.electron.ipcRenderer.on('toggle-mode', () => {
-            togglePlaybackMode();
-        });
-    }
-}
+            // 如果是随机播放模式，则随机选择一首歌曲
+            if (currentPlaybackModeIndex.value == 0) {
+                songIndex = Math.floor(Math.random() * songs.length);
+                console.log('[PlayerControl] 随机模式下添加歌单后随机播放:', songs[songIndex].name);
+            } else {
+                console.log('[PlayerControl] 添加歌单后自动播放第一首:', songs[0].name);
+            }
 
-// 修改进度条拖动
-const onProgressDragStart = (event) => {
-    event.preventDefault();
-
-    const currentProgressBar = event.target.closest('.progress-bar');
-    if (!currentProgressBar) return;
-
-    // 检查是否点击在小圆点上
-    const handle = event.target.closest('.progress-handle');
-    if (!handle) {
-        if (!audio.duration) return;
-        const rect = currentProgressBar.getBoundingClientRect();
-        const offsetX = Math.max(0, Math.min(event.clientX - rect.left, currentProgressBar.offsetWidth));
-        const percentage = (offsetX / currentProgressBar.offsetWidth) * 100;
-        progressWidth.value = Math.max(0, Math.min(percentage, 100));
-    }
-
-    isProgressDragging.value = true;
-    isDraggingHandle.value = true;
-
-    activeProgressBar.value = currentProgressBar;
-
-    document.addEventListener('mousemove', onProgressDrag);
-    document.addEventListener('mouseup', onProgressDragEnd);
-};
-
-// 添加一个 ref 来保存当前活动的进度条元素
-const activeProgressBar = ref(null);
-
-const onProgressDrag = (event) => {
-    event.preventDefault();
-    if (isProgressDragging.value && activeProgressBar.value) {
-        const rect = activeProgressBar.value.getBoundingClientRect();
-        const offsetX = Math.max(0, Math.min(event.clientX - rect.left, activeProgressBar.value.offsetWidth));
-        const percentage = (offsetX / activeProgressBar.value.offsetWidth) * 100;
-        progressWidth.value = Math.max(0, Math.min(percentage, 100));
-
-        // 更新时间提示
-        tooltipPosition.value = offsetX;
-        const time = (percentage / 100) * audio.duration;
-        tooltipTime.value = formatTime(time);
-    }
-};
-
-// 重置歌词高亮
-const resetLyricsHighlight = (currentTimeInSeconds) => {
-    if (!lyricsData.value) return;
-
-    // 重置所有字符的高亮状态
-    lyricsData.value.forEach((lineData, lineIndex) => {
-        lineData.characters.forEach(charData => {
-            charData.highlighted = (currentTimeInSeconds * 1000 >= charData.startTime);
-        });
-
-        // 找到当前应该显示的行
-        const isCurrentLine = lineData.characters.some(char =>
-            currentTimeInSeconds * 1000 >= char.startTime &&
-            currentTimeInSeconds * 1000 <= char.endTime
-        );
-
-        if (isCurrentLine) {
-            currentLineIndex = lineIndex;
-            const lyricsContainer = document.getElementById('lyrics-container');
-            if (!lyricsContainer) return;
-            const containerHeight = lyricsContainer.offsetHeight;
-            const lineElement = document.querySelectorAll('.line')[lineIndex];
-            if (lineElement) {
-                const lineHeight = lineElement.offsetHeight;
-                scrollAmount.value = -lineElement.offsetTop + (containerHeight / 2) - (lineHeight / 2);
+            // 播放选中的歌曲
+            const result = await addSongToQueue(
+                songs[songIndex].hash,
+                songs[songIndex].name,
+                songs[songIndex].img,
+                songs[songIndex].author,
+                true
+            );
+            if (result && result.song) {
+                await playSong(result.song);
             }
         }
-    });
-};
-
-const onProgressDragEnd = (event) => {
-    if (isProgressDragging.value && activeProgressBar.value) {
-        const rect = activeProgressBar.value.getBoundingClientRect();
-        const offsetX = Math.max(0, Math.min(event.clientX - rect.left, activeProgressBar.value.offsetWidth));
-        const percentage = (offsetX / activeProgressBar.value.offsetWidth) * 100;
-        const newTime = (percentage / 100) * audio.duration;
-
-        audio.currentTime = Math.max(0, Math.min(newTime, audio.duration));
-        resetLyricsHighlight(audio.currentTime);
-    }
-    isProgressDragging.value = false;
-    isDraggingHandle.value = false;
-    showTimeTooltip.value = false;
-    activeProgressBar.value = null;
-    document.removeEventListener('mousemove', onProgressDrag);
-    document.removeEventListener('mouseup', onProgressDragEnd);
-};
-
-// 修改点击进度条的处理方法
-const updateProgressFromEvent = (event) => {
-    if (isProgressDragging.value) return; // 如果正在拖动则不处理点击
-
-    const progressBar = event.target.closest('.progress-bar');
-    if (!progressBar || !audio.duration) return;
-
-    const rect = progressBar.getBoundingClientRect();
-    const offsetX = Math.max(0, Math.min(event.clientX - rect.left, progressBar.offsetWidth));
-    const percentage = (offsetX / progressBar.offsetWidth) * 100;
-    const newTime = (percentage / 100) * audio.duration;
-
-    audio.currentTime = Math.max(0, Math.min(newTime, audio.duration));
-    progressWidth.value = percentage;
-    resetLyricsHighlight(audio.currentTime);
-};
-
-// 在进度条模板中添加时间提示
-const showTimeTooltip = ref(false);
-const tooltipPosition = ref(0);
-const tooltipTime = ref('0:00');
-
-const updateTimeTooltip = (event) => {
-    const progressBar = event.target.closest('.progress-bar');
-    if (!progressBar || !audio.duration) return;
-
-    const rect = progressBar.getBoundingClientRect();
-    const offsetX = Math.max(0, Math.min(event.clientX - rect.left, progressBar.offsetWidth));
-    
-    const tooltipWidth = 50;
-    if (offsetX < tooltipWidth / 2) {
-        tooltipPosition.value = tooltipWidth / 2;
-    } else if (offsetX > progressBar.offsetWidth - tooltipWidth / 2) {
-        tooltipPosition.value = progressBar.offsetWidth - tooltipWidth / 2;
-    } else {
-        tooltipPosition.value = offsetX;
-    }
-
-    const percentage = (offsetX / progressBar.offsetWidth);
-    const time = percentage * audio.duration;
-    tooltipTime.value = formatTime(time);
-
-    showTimeTooltip.value = true;
-};
-
-const hideTimeTooltip = () => {
-    if (!isProgressDragging.value) {
-        showTimeTooltip.value = false;
-    }
-};
-
-const initMediaSession = () => {
-    if (!("mediaSession" in navigator) || !navigator.mediaSession) return;
-    navigator.mediaSession.setActionHandler('play', togglePlayPause);
-    navigator.mediaSession.setActionHandler('pause', togglePlayPause);
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-        playSongFromQueue('previous');
-    });
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
-        playSongFromQueue('next');
-    });
-};
-
-const changeMediaSession = (song) => {
-    if (!("mediaSession" in navigator) || !navigator.mediaSession) return;
-
-    const defaultArtwork = './assets/images/logo.png';
-    const checkImageAccessibility = (src) => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => resolve(src);
-            img.onerror = () => resolve(defaultArtwork);
-            img.src = src;
-        });
-    };
-
-    const updateMediaSession = async () => {
-        try {
-            const artworkSrc = await checkImageAccessibility(song.img || defaultArtwork);
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: song.name,
-                artist: song.author,
-                album: song.album,
-                artwork: [{ src: artworkSrc }]
-            });
-        } catch (error) {
-            console.error("Failed to update media session metadata:", error);
+        return songs;
+    },
+    addToNext,
+    addCloudMusicToQueue: async (hash, name, author, timeLength) => {
+        console.log('[PlayerControl] 外部调用addCloudMusicToQueue:', name);
+        const result = await addCloudMusicToQueue(hash, name, author, timeLength);
+        if (result && result.song) {
+            await playSong(result.song);
+        } else if (result && result.shouldPlayNext) {
+            console.log('[PlayerControl] 云盘歌曲无法播放，3秒后自动切换到下一首');
+            setTimeout(() => {
+                playSongFromQueue('next');
+            }, 3000);
         }
-    };
-    updateMediaSession();
-};
+        return result;
+    },
+    addCloudPlaylistToQueue: async (songs, append = false) => {
+        const queueSongs = await addCloudPlaylistToQueue(songs, append);
+        if (queueSongs && queueSongs.length > 0 && !append) {
+            // 根据播放模式决定播放哪首歌曲
+            let songIndex = 0;
 
-const checkFocus = () => {
-    isInputFocused.value = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
-};
-// 处理键盘按下事件
-const handleKeyDown = (event) => {
-    if(isInputFocused.value) return;
-    switch (event.code) {
-        case 'Space':
-            event.preventDefault();
-            togglePlayPause();
-            break;
-        case 'ArrowLeft':
-            playSongFromQueue('previous');
-            break;
-        case 'ArrowRight':
+            // 如果是随机播放模式，则随机选择一首歌曲
+            if (currentPlaybackModeIndex.value == 0) {
+                songIndex = Math.floor(Math.random() * queueSongs.length);
+                console.log('[PlayerControl] 随机模式下添加云盘歌单后随机播放:', queueSongs[songIndex].name);
+            } else {
+                console.log('[PlayerControl] 添加云盘歌单后自动播放第一首:', queueSongs[0].name);
+            }
+
+            // 播放选中的歌曲
+            const result = await addCloudMusicToQueue(
+                queueSongs[songIndex].hash,
+                queueSongs[songIndex].name,
+                queueSongs[songIndex].author,
+                queueSongs[songIndex].timeLength,
+                true
+            );
+            if (result && result.song) {
+                await playSong(result.song);
+            }
+        }
+        return queueSongs;
+    },
+    currentSong
+});
+
+// 从播放队列接收事件
+const onQueueSongAdd = async (hash, name, img, author) => {
+    console.log('[PlayerControl] 从播放队列收到addSongToQueue事件:', name);
+    const result = await addSongToQueue(hash, name, img, author);
+    if (result && result.song) {
+        await playSong(result.song);
+    } else if (result && result.shouldPlayNext) {
+        console.log('[PlayerControl] 歌曲无法播放，3秒后自动切换到下一首');
+        setTimeout(() => {
             playSongFromQueue('next');
-            break;
+        }, 3000);
     }
 };
 
-const desktopLyrics = () => {
-    let savedConfig = JSON.parse(localStorage.getItem('settings')) || {};
-    if(!savedConfig?.desktopLyrics) savedConfig.desktopLyrics = 'off';
-    let action = savedConfig?.desktopLyrics === 'off' ? 'display-lyrics' : 'close-lyrics';
-    window.electron.ipcRenderer.send('desktop-lyrics-action', action);
-    savedConfig.desktopLyrics = action === 'display-lyrics' ? 'on' : 'off';
-    localStorage.setItem('settings', JSON.stringify(savedConfig));
+const onQueueCloudSongAdd = async (hash, name, author, timeLength) => {
+    console.log('[PlayerControl] 从播放队列收到addCloudMusicToQueue事件:', name);
+    const result = await addCloudMusicToQueue(hash, name, author, timeLength);
+    if (result && result.song) {
+        await playSong(result.song);
+    } else if (result && result.shouldPlayNext) {
+        console.log('[PlayerControl] 云盘歌曲无法播放，3秒后自动切换到下一首');
+        setTimeout(() => {
+            playSongFromQueue('next');
+        }, 3000);
+    }
 };
 </script>
-
 
 <style scoped>
 @import '@/assets/style/PlayerControl.css';

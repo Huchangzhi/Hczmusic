@@ -39,7 +39,7 @@
                                 </router-link>
                             </li>
                             <li>
-                                <a :href="downloadUrl || 'https://github.com/iAJue/MoeKoeMusic/releases'" target="_blank" style="position: relative;">
+                                <a @click="openRegisterUrl(downloadUrl || 'https://github.com/iAJue/MoeKoeMusic/releases')" href="#" style="position: relative;">
                                     <i class="fab fa-github"></i> {{ $t('geng-xin') }}
                                     <i v-if="showNewBadge" class="new-badge">new</i>
                                 </a>
@@ -78,6 +78,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { MoeAuthStore } from '../stores/store';
+import { openRegisterUrl } from '../utils/utils';
 import { useI18n } from 'vue-i18n';
 const MoeAuth = MoeAuthStore();
 const searchQuery = ref('');

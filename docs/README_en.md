@@ -6,9 +6,11 @@
 <p align="center">
 An open-source, concise, and aesthetically pleasing third-party client for KuGou
 <br />
-<a href=" https://github.com/iAJue/MoeKoeMusic/ " target="blank"><strong> 🌎 GitHub Warehouse</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
-<a href=" https://github.com/iAJue/MoeKoeMusic/releases " target="blank"><strong> 📦️ Download the installation package  &nbsp;|&nbsp;&nbsp;
-<a href=" https://MoeJue.cn " target="blank"><strong> 💬  Visit Blog</strong></a>
+<a href="https://github.com/iAJue/MoeKoeMusic/" target="blank"><strong>🌎 GitHub Repository</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+<a href="https://github.com/iAJue/MoeKoeMusic/releases" target="blank"><strong>📦️ Download Packages</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+<a href="https://MoeJue.cn" target="blank"><strong>💬 Visit Blog</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+<a href="https://Music.MoeKoe.cn" target="blank"><strong>🏠 Project Homepage</strong></a>
+
 </p>
 <p align="center">
     <a href="https://github.com/iAJue/MoeKoeMusic/README.md" target="blank"><strong>🇨🇳 简体中文</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
@@ -23,7 +25,7 @@ An open-source, concise, and aesthetically pleasing third-party client for KuGou
 
 ![images]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png )
 
-## Preface
+## ❤️ Preface
 
 As early as around 10 years ago, when I was using the web version of QQ, I had already started using Kugou Music (which I have been a fan of for over ten years), so all the songs I collected over the years were on it Later on, I also tried using NetEase Cloud or QQ Music, and tried importing Kugou's playlists into it, but the results were not satisfactory I mostly listen to Japanese anime OP, and I can't find many songs
 
@@ -46,7 +48,7 @@ I said on my personal introduction page that I particularly enjoy listening to m
 -  ⚙️  Multi platform support
 -  🛠  More features under development
 
-## Todo List
+## 📢 Todo List
 - [ ]  📺  Support MV playback
 - [x]  🌚 Light/Dark Mode  Automatic switching
 - [ ]  👆  Support Touch Bar
@@ -192,12 +194,17 @@ npm run electron:build -- -mwl
 
 You can add other options as needed to further customize the packaging, such as specifying x64 and arm64 architectures, or selecting different target formats.
 
+## ⭐ Support This Project
+
+If you find this project helpful, please consider giving us a star! Your support motivates us to keep improving.
+
+[![GitHub stars](https://img.shields.io/github/stars/iAJue/MoeKoeMusic.svg?style=social&label=Star)](https://github.com/iAJue/MoeKoeMusic)
 
 ##  ☑️  feedback
 
 If you have any questions or suggestions, please feel free to submit an issue or pull request.
 
-Disclaimers
+## ⚠️ Disclaimers
 0. This program is a third-party client of KuGou, not an official KuGou client. If you need more complete functions, please download the official client to experience it
 1. This project is for learning purposes only. Please respect copyright and do not use this project for commercial activities or illegal purposes!
 2. Copyright data may be generated during the use of this project. For these copyrighted data, this project does not own them. To avoid infringement, users must clear any copyright data generated during the use of this project within 24 hours.
@@ -216,7 +223,7 @@ This project is for personal learning and research purposes only, and is prohibi
 
 Based on [MIT license](https://opensource.org/licenses/MIT)License to open source.
 
-##Inspiration source
+## 👍 Inspiration source
 
 The API source code comes from [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi ) 
 In order to avoid disrupting the structure of the original project and facilitate later updates and iterations, the API has not been highly integrated~~ Actually, it's to save time~~)
@@ -234,3 +241,8 @@ In order to avoid disrupting the structure of the original project and facilitat
 ![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/4.png )
 ![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png )
 ![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/6.png )
+
+
+## 🗓️ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=iAJue/MoeKoeMusic&type=Date)](https://www.star-history.com/#iAJue/MoeKoeMusic&Date)

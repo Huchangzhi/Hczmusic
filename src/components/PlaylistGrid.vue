@@ -35,8 +35,6 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
-
 const props = defineProps({
   playlists: {
     type: Array,

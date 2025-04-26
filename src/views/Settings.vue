@@ -52,6 +52,19 @@
                     </div>
                 </div>
                 
+                <div v-if="selectionType === 'apiMode' && selectedSettings.apiMode.value === 'on'" class="api-settings-container">
+                    <div class="api-setting-item">
+                        <label>API 地址</label>
+                        <input type="text" value="http://127.0.0.1:6521" readonly class="api-input" />
+                    </div>
+                    <div class="api-setting-item">
+                        <label>WebSocket 地址</label>
+                        <input type="text" value="ws://127.0.0.1:6520" readonly class="api-input" />
+                    </div>
+                    <div class="api-hint">
+                        这些是默认的 API 地址，当前版本不支持自定义修改
+                    </div>
+                </div>
                 <button @click="closeSelection">{{ $t('guan-bi') }}</button>
             </div>
         </div>
@@ -80,6 +93,13 @@
                     <button @click="saveShortcuts" class="primary">{{ $t('bao-cun') }}</button>
                 </div>
             </div>
+        </div>
+        
+        <div class="reset-settings-container">
+            <button @click="openResetConfirmation" class="reset-settings-button">
+                <i class="fas fa-sync-alt"></i>
+                恢复出厂设置
+            </button>
         </div>
         <div class="version-info">
             <p>© MoeKoe Music</p>
@@ -115,7 +135,8 @@ const selectedSettings = ref({
     minimizeToTray: { displayText: t('da-kai'), value: 'on' },
     highDpi: { displayText: t('guan-bi'), value: 'off' },
     qualityCompatibility: { displayText: t('guan-bi'), value: 'off' },
-    dpiScale: { displayText: '1.0', value: '1.0' }
+    dpiScale: { displayText: '1.0', value: '1.0' },
+    apiMode: { displayText: t('guan-bi'), value: 'off' }
 });
 
 // 设置分区配置
@@ -199,6 +220,12 @@ const settingSections = computed(() => [
             {
                 key: 'minimizeToTray',
                 label: t('guan-bi-shi-minimize-to-tray')
+            },
+            {
+                key: 'apiMode',
+                label: 'API模式',
+                showRefreshHint: true,
+                refreshHintText: t('zhong-qi-hou-sheng-xiao')
             },
             {
                 key: 'shortcuts',
@@ -302,7 +329,7 @@ const selectionTypeMap = {
         ]
     },
     qualityCompatibility: {
-        title: t('jian-rong-mo-shi'),
+        title: '兼容模式',
         options: [
             { displayText: t('kai-qi'), value: 'on' },
             { displayText: t('guan-bi'), value: 'off' }
@@ -324,6 +351,13 @@ const selectionTypeMap = {
         title: '字体文件地址',
         options: [
             { displayText: '默认字体', value: '' }
+        ]
+    },
+    apiMode: {
+        title: 'API模式',
+        options: [
+            { displayText: t('da-kai'), value: 'on' },
+            { displayText: t('guan-bi'), value: 'off' }
         ]
     }
 };
@@ -386,8 +420,9 @@ const selectOption = (option) => {
     };
     actions[selectionType.value]?.();
     saveSettings();
-    closeSelection();
-    if (selectionType.value == 'lyricsBackground' || selectionType.value == 'lyricsFontSize' || selectionType.value == 'gpuAcceleration' || selectionType.value == 'highDpi') {
+    if(selectionType.value != 'apiMode') closeSelection();
+    const refreshHintTypes = ['lyricsBackground', 'lyricsFontSize', 'gpuAcceleration', 'highDpi', 'apiMode'];
+    if (refreshHintTypes.includes(selectionType.value)) {
         showRefreshHint.value[selectionType.value] = true;
     }
 };
@@ -487,6 +522,10 @@ const shortcutConfigs = ref({
     mode: { 
         label: t('qie-huan-bo-fang-mo-shi'),
         defaultValue: 'Alt+Ctrl+P'
+    },
+    toggleDesktopLyrics: {
+        label: '显示/隐藏桌面歌词',
+        defaultValue: 'Alt+Ctrl+D'
     }
 });
 
@@ -636,6 +675,15 @@ const openFontSettings = async () => {
 
 const qualityCompatibilityMode = ref(false);
 const dpiScale = ref(1.0);
+
+const openResetConfirmation = async () => {
+    const result = await window.$modal.confirm('你确定要恢复出厂设置吗？此操作不可逆！');
+    if(result){
+        localStorage.clear();
+        isElectron() && window.electron.ipcRenderer.send('clear-settings');
+        window.$modal.alert('恢复出厂设置成功，重启生效');
+    }
+};
 </script>
 
 <style scoped>
@@ -760,7 +808,7 @@ const dpiScale = ref(1.0);
 .shortcut-modal-content {
     background: white;
     border-radius: 12px;
-    padding: 24px;
+    padding: 15px;
     width: 90%;
     max-width: 500px;
 }
@@ -779,7 +827,7 @@ const dpiScale = ref(1.0);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
+    padding: 6px 0;
     border-bottom: 1px solid #eee;
 }
 
@@ -795,6 +843,7 @@ const dpiScale = ref(1.0);
     align-items: center;
     justify-content: center;
     gap: 8px;
+    font-size: 15px;
 }
 
 .shortcut-input.recording {
@@ -825,7 +874,7 @@ const dpiScale = ref(1.0);
     color: #666;
     transition: all 0.2s;
     position: absolute;
-    right: 2px;
+    right: 5px;
 }
 
 .shortcut-modal-footer {
@@ -940,4 +989,60 @@ const dpiScale = ref(1.0);
     color: #666;
 }
 
+.reset-settings-container {
+    display: flex;
+    justify-content: center;
+    margin: 30px 0 20px 0;
+}
+
+.reset-settings-button {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 17px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.reset-settings-button:hover {
+    background-color: #e53935;
+}
+.api-settings-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.api-settings-container .api-setting-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.api-settings-container .api-setting-item label {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.api-settings-container .api-setting-item .api-input {
+    width: 100%;
+    height: 35px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+    padding-left: 10px;
+    box-sizing: border-box;
+}
+
+.api-settings-container .api-hint {
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+}
 </style>

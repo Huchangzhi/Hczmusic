@@ -8,7 +8,8 @@
 <br />
 <a href="https://github.com/iAJue/MoeKoeMusic/" target="blank"><strong>🌎 GitHub倉庫</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
 <a href="https://github.com/iAJue/MoeKoeMusic/releases" target="blank"><strong>📦️インストールパッケージのダウンロード</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
-<a href="https://MoeJue.cn" target="blank"><strong>💬 ブログへのアクセス</strong></a>
+<a href="https://MoeJue.cn" target="blank"><strong>💬 ブログへのアクセス</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+<a href="https://Music.MoeKoe.cn" target="blank"><strong>🏠 プロジェクトホームページ</strong></a>
 </p>
 <p align="center">
     <a href="https://github.com/iAJue/MoeKoeMusic/README.md" target="blank"><strong>🇨🇳 简体中文</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
@@ -23,7 +24,7 @@
 
 ![images](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 
-### はじめに
+### ❤️ はじめに
 
 10年ほど前の様子では、Web版QQを使っている間に私はすでにクールな犬音楽を使い始めていたので(10年以上の古い粉でもある)、これらの年に所蔵されている曲はすべて上にあります。その後、私も網易雲やQQ音楽を使ってみたり、クールな犬の歌を導入してみたりしましたが、効果はあまりありませんでした。私が聴いているのはほとんど日漫OPで、多くの曲は見つけることができませんでした。
 
@@ -46,7 +47,7 @@
 - ⚙️ マルチプラットフォームサポート
 - 🛠 その他の機能開発中
 
-## Todo List
+## 📢 Todo List
 - [ ] 📺 MV再生をサポート
 - [x] 🌚 Light/Dark Mode 自動切り替え
 - [ ] 👆 Touch Bar対応
@@ -193,11 +194,18 @@ npm run electron:build -- -mwl
 必要に応じて他のオプションを追加して、パッケージをさらにカスタマイズすることができます。たとえば、x 64とarm 64スキーマを指定したり、異なるターゲットフォーマットを選択したりすることができます。
 
 
+## ⭐ プロジェクトをサポート
+
+このプロジェクトがお役に立った場合は、ぜひ星を付けてください！あなたのサポートが私たちの継続的な改善の原動力です。
+
+[![GitHub stars](https://img.shields.io/github/stars/iAJue/MoeKoeMusic.svg?style=social&label=Star)](https://github.com/iAJue/MoeKoeMusic)
+
+
 ## ☑️ フィードバック
 
 何か質問やアドバイスがあれば、issueまたはpull requestを提出してください。
 
-### 免責事項
+### ⚠️ 免責事項
 0. 本プログラムはクールドッグの第三者クライアントであり、クールドッグの公式ではなく、より完全な機能が必要な場合は公式クライアント体験をダウンロードしてください。
 1. 本プロジェクトは学習用にのみ使用されます。著作権を尊重し、このプロジェクトを利用して商業行為や不正な用途に従事しないでください。
 2. 本プロジェクトの使用中に著作権データが生成される可能性があります。これらの著作権データに対して、本プロジェクトは所有権を持っていません。権利侵害を回避するために、使用者は、本プロジェクトを使用する過程で生成された著作権データを24時間以内に消去しなければならない。
@@ -214,7 +222,7 @@ npm run electron:build -- -mwl
 
 [MIT license](https://opensource.org/licenses/MIT)オープンソースを許可する。
 
-###インスピレーションソース
+### 👍 インスピレーションソース
 
 APIソースコードは[MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi) 
 (元のプロジェクトの構造を破壊しないためと後期更新の反復が便利で、APIは高度な統合をしていない.~~実は手間を省くために~~)
@@ -232,3 +240,8 @@ APIソースコードは[MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMu
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/4.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/6.png)
+
+
+## 🗓️ スター履歴
+
+[![Star History Chart](https://api.star-history.com/svg?repos=iAJue/MoeKoeMusic&type=Date)](https://www.star-history.com/#iAJue/MoeKoeMusic&Date)

@@ -189,5 +189,14 @@
   "hires-yin-zhi": "Hi-Res音质",
   "kui-she-chao-qing-yin-zhi": "蝰蛇超清音质",
   "tian-jia-wo-xi-huan": "添加至我喜欢",
-  "qie-huan-bo-fang-mo-shi": "切换播放模式"
+  "qie-huan-bo-fang-mo-shi": "切换播放模式",
+  "ke-yong": "可用",
+  "wo-de-yun-pan": "我的云盘",
+  "yun-pan-ge-qu-shu": "云盘歌曲数",
+  "yun-pan-miao-shu": "这里存放您上传到云盘的音乐文件，支持在线播放和管理。",
+  "yun-pan-ge-qu": "云盘歌曲",
+  "cong-yun-pan-shan-chu": "从云盘删除",
+  "que-ren-shan-chu-yun-pan-ge-qu": "确认从云盘删除选中歌曲？",
+  "shang-chuan-yin-le": "上传",
+  "pi-liang-cao-zuo": "批量操作"
 }

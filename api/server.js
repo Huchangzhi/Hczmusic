@@ -203,6 +203,13 @@ async function startService() {
 
   const app = await consturctServer();
 
+  app.get('/', (req, res) => {
+    res.send({
+      type: 'welcome',
+      data: '感谢接入MoeKoe Music，文档地址：https://music.moekoe.cn/'
+    });
+  });
+
    /** @type {import('express').Express & ExpressExtension} */
   const appExt = app;
 

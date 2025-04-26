@@ -8,7 +8,8 @@
 <br />
 <a href="https://github.com/iAJue/MoeKoeMusic/" target="blank"><strong>🌎 GitHub창고</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
 <a href="https://github.com/iAJue/MoeKoeMusic/releases" target="blank"><strong>📦️ 설치 패키지 다운로드 </strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
-<a href="https://MoeJue.cn" target="blank"><strong>💬 블로그 방문 </strong></a>
+<a href="https://MoeJue.cn" target="blank"><strong>💬 블로그 방문 </strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+<a href="https://Music.MoeKoe.cn" target="blank"><strong>🏠 프로젝트 홈페이지</strong></a>
 </p>
 <p align="center">
     <a href="https://github.com/iAJue/MoeKoeMusic/README.md" target="blank"><strong>🇨🇳 简体中文</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
@@ -23,7 +24,7 @@
 
 ![images](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 
-## 머리말
+## ❤️ 머리말
 
 일찍이 10년 전후의 모습, 그것은 웹 페이지 QQ를 사용할 때 나는 이미 쿠거우 음악을 사용하기 시작했다 (또한 10여 년의 오랜 팬이다). 그래서 요 몇 년 동안 소장한 노래는 모두 위에 있다.후에 나도 왕이윈이나 QQ음악을 사용하기 시작했고 쿠거우의 노래 리스트를 도입하려고 시도했지만 효과가 모두 만족스럽지 못했다.내가 들은 것은 대부분 일본 만화 OP이다. 많은 노래를 찾을 수 없다.
 
@@ -46,7 +47,7 @@
 - ⚙️ 다중 플랫폼 지원
 - 🛠 더 많은 기능 개발 중
 
-## Todo List
+## 📢 Todo List
 - [ ] 📺 뮤직비디오 재생 지원
 - [x] 🌚 Light/Dark Mode 자동 전환
 - [ ] 👆 Touch Bar 지원
@@ -196,11 +197,18 @@ npm run electron:build -- -mwl
 x64 및 arm64 스키마를 지정하거나 다른 대상 형식을 선택하는 등의 추가 옵션을 추가하여 패키지를 추가로 사용자 지정할 수 있습니다.
 
 
+## ⭐ 프로젝트 지원
+
+이 프로젝트가 도움이 되었다면 별을 눌러주세요! 여러분의 지원이 저희가 계속 개선할 수 있는 원동력입니다.
+
+[![GitHub stars](https://img.shields.io/github/stars/iAJue/MoeKoeMusic.svg?style=social&label=Star)](https://github.com/iAJue/MoeKoeMusic)
+
+
 ## ☑️ 피드백
 
 질문이나 제안이 있으면 issue 또는 pull request를 제출하십시오.
 
-## 면책 조항
+## ⚠️ 면책 조항
 0. 본 프로그램은 쿠거우 제3자 클라이언트입니다. 쿠거우 공식이 아닙니다. 더 완벽한 기능이 필요하시면 공식 클라이언트 체험을 다운로드하십시오.
 1.본 프로젝트는 학습용입니다.저작권을 존중하고 이 프로젝트를 상업행위 및 불법용도로 이용하지 마십시오!
 2. 본 프로젝트를 사용하는 과정에서 저작권 데이터가 발생할 수 있습니다.본 프로젝트는 이러한 저작권 데이터에 대한 소유권이 없습니다.저작권 침해를 방지하기 위해 사용자는 본 프로젝트를 사용하는 과정에서 발생하는 저작권 데이터를 24시간 이내에 삭제해야 합니다.
@@ -219,7 +227,7 @@ x64 및 arm64 스키마를 지정하거나 다른 대상 형식을 선택하는 
 
 기반 [MIT license](https://opensource.org/licenses/MIT) 오픈 소스로 라이센스를 부여합니다.
 
-## 영감의 원천
+## 👍 영감의 원천
 
 API 소스 코드는 [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi) 
 (원 프로젝트의 구조를 파괴하지 않고 후기 업데이트 반복의 편리를 위해 API는 고도로 통합되지 않았다.~~사실 수고를 덜려고 ~~)
@@ -237,3 +245,8 @@ API 소스 코드는 [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusic
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/4.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/6.png)
+
+
+## 🗓️ 스타 히스토리
+
+[![Star History Chart](https://api.star-history.com/svg?repos=iAJue/MoeKoeMusic&type=Date)](https://www.star-history.com/#iAJue/MoeKoeMusic&Date)

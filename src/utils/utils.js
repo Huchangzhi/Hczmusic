@@ -109,3 +109,11 @@ export const setTheme = (theme) => {
             break;
     }
 };
+
+export const openRegisterUrl = (registerUrl) => {
+    if (window.electron) {
+        window.electron.ipcRenderer.send('open-url', registerUrl);
+    } else {
+        window.open(registerUrl, '_blank');
+    }
+};

@@ -9,6 +9,7 @@
     position: relative;
     width: 60%;
     text-align: center;
+    cursor: grab;
 }
 
 #lyrics {
@@ -139,6 +140,11 @@
     border-radius: 5px;
     overflow: visible;
     cursor: pointer;
+    transition: height 0.2s ease;
+}
+
+.progress-bar:hover {
+    height: 8px;
 }
 
 .progress {
@@ -421,16 +427,17 @@
 /* 全屏歌词界面的进度条样式 */
 .lyrics-screen .progress-bar {
     flex-grow: 1;
-    height: 2px;
+    height: 3px;
     background-color: rgba(255, 255, 255, 0.3);
     border-radius: 5px;
     margin: 0 10px;
     position: relative;
     overflow: visible;
+    transition: height 0.2s ease;
 }
 
-.lyrics-screen .progress-bar:hover .progress {
-    opacity: 0.8;
+.lyrics-screen .progress-bar:hover {
+    height: 7px;
 }
 
 .progress-handle.dragging {
@@ -459,11 +466,10 @@
 /* 高潮点的样式 */
 .climax-point {
     position: absolute;
-    width: 4px;
-    height: 4px;
-    background-color: #fff;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    top: 50%;
+    top: 67%;
     transform: translate(-50%, -50%);
     z-index: 1;
     pointer-events: none;

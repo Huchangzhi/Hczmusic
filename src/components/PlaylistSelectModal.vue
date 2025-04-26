@@ -18,7 +18,7 @@
 </template>
 
 <script setup>
-import { defineProps, ref } from 'vue';
+import { ref } from 'vue';
 import { get } from '../utils/request';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -41,15 +41,23 @@ const validateUserAndSong = () => {
         window.$modal.alert(t('qing-xian-deng-lu'));
         return false;
     }
-    if (!props.currentSong.hash) {
+    if (Array.isArray(props.currentSong)) {
+        if(!props.currentSong[0].hash){
+            window.$modal.alert('没有选择正确的歌曲');
+            return false;
+        }
+    }else if (!props.currentSong.hash) {
         window.$modal.alert(t('mei-you-zheng-zai-bo-fang-de-ge-qu'));
+        return false;
+    }
+    if (props.currentSong.isCloud) {
+        window.$modal.alert('云盘音乐不支持添加到歌单');
         return false;
     }
     return true;
 };
 
 const fetchPlaylists = async () => {
-    if (!validateUserAndSong()) return;
     try {
         const playlistResponse = await get('/user/playlist', {
             pagesize: 100
@@ -63,24 +71,24 @@ const fetchPlaylists = async () => {
         );
         isOpen.value = true;
     } catch (error) {
-        console.log(error);
         ElMessage.error(t('huo-qu-ge-dan-shi-bai'));
         isOpen.value = false;
     }
 };
 
 const addToPlaylist = async (listid, song) => {
+    if (!validateUserAndSong()) return;
+    let song_data = '';
+    if(Array.isArray(song)){
+        song_data = song.map(s => `${encodeURIComponent(s.name.replace(',', ''))}|${s.hash}`).join(',');
+    }else{
+        song_data = `${encodeURIComponent(song.name.replace(',', ''))}|${song.hash}`;
+    }
     try {
-        await get(`/playlist/tracks/add?listid=${listid}&data=${encodeURIComponent(song.name.replace(',', ''))}|${song.hash}`);
-        ElMessage.success({
-            message: t('cheng-gong-tian-jia-dao-ge-dan'),
-            duration: 2000
-        });
+        await get(`/playlist/tracks/add?listid=${listid}&data=${song_data}`);
+        ElMessage.success(t('cheng-gong-tian-jia-dao-ge-dan'));
     } catch (error) {
-        ElMessage.error({
-            message: t('tian-jia-dao-ge-dan-shi-bai'),
-            duration: 2000
-        });
+        ElMessage.error(t('tian-jia-dao-ge-dan-shi-bai'));
     }
     isOpen.value = false;
 };

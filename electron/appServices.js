@@ -7,12 +7,13 @@ import { fileURLToPath } from 'url';
 import isDev from 'electron-is-dev';
 import fs from 'fs';
 import { exec } from 'child_process';
+import { checkForUpdates } from './updater.js';
+import { Notification } from 'electron';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const store = new Store();
 let mainWindow = null;
 let apiProcess = null;
 let tray = null;
-// import { checkForUpdates } from './updater.js';
 
 // 创建主窗口
 export function createWindow() {
@@ -137,55 +138,91 @@ export function createLyricsWindow() {
     }
 
     // 监听窗口移动事件，限制窗口位置
+    let moveTimer;
     lyricsWindow.on('move', () => {
-        const bounds = lyricsWindow.getBounds();
-        const { height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-        
-        // 如果窗口移动到工作区域之外，将其移回工作区域内
-        if (bounds.y + bounds.height > screenHeight) {
-            lyricsWindow.setPosition(bounds.x, screenHeight - bounds.height);
-        }
-        if (bounds.y < 0) {
-            lyricsWindow.setPosition(bounds.x, 0);
-        }
+        if (moveTimer) return;
+        moveTimer = setTimeout(() => {
+            const bounds = lyricsWindow.getBounds();
+            const { height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+            if (bounds.y + bounds.height > screenHeight) {
+                lyricsWindow.setPosition(bounds.x, screenHeight - bounds.height);
+            }
+            if (bounds.y < 0) {
+                lyricsWindow.setPosition(bounds.x, 0);
+            }
+            clearTimeout(moveTimer);
+            moveTimer = null;
+        }, 3000);
     });
 
     // 设置窗口置顶级别
     lyricsWindow.setAlwaysOnTop(true, 'screen-saver');
+    lyricsWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
     // 允许窗口透明
     lyricsWindow.setBackgroundColor('#00000000');
 }
 
 // 创建托盘图标及菜单
-export function createTray(mainWindow) {
+export function createTray(mainWindow, title='') {
+    if(tray && title) {
+        tray.setToolTip(title);
+        return tray;
+    }
     const trayIconPath = isDev
         ? path.join(__dirname, '../build/icons/tray-icon.png')
         : ((process.platform === 'win32') ? path.join(process.resourcesPath, 'icons', 'tray-icon.ico') : path.join(process.resourcesPath, 'icons', 'tray-icon.png'));
 
     tray = new Tray(trayIconPath);
+    tray.setToolTip('MoeKoe Music');
 
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: '项目主页',
+            label: '项目主页', 
+            icon: isDev ? path.join(__dirname, '../build/icons/menu/home.png') : path.join(process.resourcesPath, 'icons', 'menu', 'home.png'),
             click: () => {
                 shell.openExternal('https://github.com/iAJue/');
             }
         },
         {
-            label: '反馈bug',
+            label: '反馈bug', 
+            icon: isDev ? path.join(__dirname, '../build/icons/menu/bug.png') : path.join(process.resourcesPath, 'icons', 'menu', 'bug.png'),
             click: () => {
                 shell.openExternal('https://github.com/iAJue/MoeKoeMusic/issues');
             }
         },
-        // {
-        //     label: '检查更新',
-        //     click: () => {
-        //         checkForUpdates(false);
-        //     }
-        // },
         {
-            label: '显示/隐藏', accelerator: 'CmdOrCtrl+Shift+S', click: () => {
+            label: '上一首', 
+            icon: isDev ? path.join(__dirname, '../build/icons/menu/prev.png') : path.join(process.resourcesPath, 'icons', 'menu', 'prev.png'), accelerator: 'Alt+CommandOrControl+Left', 
+            click: () => {
+                mainWindow.webContents.send('play-previous-track');
+            }
+        },
+        {
+            label: '暂停', accelerator: 'Alt+CommandOrControl+Space', 
+            icon: isDev ? path.join(__dirname, '../build/icons/menu/play.png') : path.join(process.resourcesPath, 'icons', 'menu', 'play.png'),
+            click: () => {
+                mainWindow.webContents.send('toggle-play-pause');
+            }
+        },
+        {
+            label: '下一首', accelerator: 'Alt+CommandOrControl+Right', 
+            icon: isDev ? path.join(__dirname, '../build/icons/menu/next.png') : path.join(process.resourcesPath, 'icons', 'menu', 'next.png'),
+            click: () => {
+                mainWindow.webContents.send('play-next-track');
+            }
+        },
+        {
+            label: '检查更新', 
+            icon: isDev ? path.join(__dirname, '../build/icons/menu/update.png') : path.join(process.resourcesPath, 'icons', 'menu', 'update.png'),
+            click: () => {
+                checkForUpdates(false);
+            }
+        },
+        {
+            label: '显示/隐藏', accelerator: 'CmdOrCtrl+Shift+S', 
+            icon: isDev ? path.join(__dirname, '../build/icons/menu/show.png') : path.join(process.resourcesPath, 'icons', 'menu', 'show.png'),
+            click: () => {
                 if (mainWindow) {
                     if (mainWindow.isVisible()) {
                         mainWindow.hide();
@@ -196,16 +233,14 @@ export function createTray(mainWindow) {
             }
         },
         {
-            label: '退出程序',
-            accelerator: 'CmdOrCtrl+Q',
+            label: '退出程序', accelerator: 'CmdOrCtrl+Q', 
+            icon: isDev ? path.join(__dirname, '../build/icons/menu/quit.png') : path.join(process.resourcesPath, 'icons', 'menu', 'quit.png'),
             click: () => {
                 app.isQuitting = true;
                 app.quit();
             }
         }
     ]);
-
-    tray.setToolTip('MoeKoe Music');
 
     switch (process.platform) {
         case 'linux':
@@ -382,6 +417,25 @@ export function registerShortcut() {
         } else if (!settings?.shortcuts) {
             globalShortcut.register('Alt+CommandOrControl+P', clickFunc);
         }
+
+        clickFunc = () => {
+            if (mainWindow.lyricsWindow) {
+                mainWindow.lyricsWindow.close();
+                mainWindow.lyricsWindow = null;
+                new Notification({
+                    title: '桌面歌词已关闭',
+                    body: '仅本次生效',
+                    icon: isDev ? path.join(__dirname, '../build/icons/logo.png') : path.join(process.resourcesPath, 'icons', 'logo.png')
+                }).show();
+            } else {
+                createLyricsWindow();
+            }
+        }
+        if (settings?.shortcuts?.toggleDesktopLyrics) {
+            globalShortcut.register(settings.shortcuts.toggleDesktopLyrics, clickFunc);
+        } else if (!settings?.shortcuts) {
+            globalShortcut.register('Alt+Ctrl+D', clickFunc);
+        }
     } catch{
         dialog.showMessageBox({
             type: 'error',
@@ -390,7 +444,6 @@ export function registerShortcut() {
             buttons: ['确定']
         });
     }
-
 }
 
 // 播放启动问候语
@@ -411,7 +464,8 @@ export function playStartupSound() {
     try {
         switch (process.platform) {
             case 'win32':
-                exec(`powershell -c (New-Object Media.SoundPlayer '${soundPath}').PlaySync()`);
+                const escapedPath = soundPath.replace(/'/g, "''");
+                exec(`powershell -c "Add-Type -AssemblyName PresentationCore; $player = New-Object System.Windows.Media.MediaPlayer; $player.Open('${escapedPath}'); $player.Play(); Start-Sleep -s 3; $player.Stop()"`);
                 break;
             case 'darwin':
                 exec(`afplay "${soundPath}"`);
@@ -425,7 +479,7 @@ export function playStartupSound() {
                 break;
         }
     } catch (error) {
-        console.error('播放启动问候语失败:', error);
+        log.error('播放启动问候语失败:', error);
     }
 }
 

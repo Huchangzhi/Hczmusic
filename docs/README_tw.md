@@ -6,9 +6,10 @@
 <p align="center">
 一款開源簡潔高顏值的酷狗協力廠商用戶端
 <br />
-<a href="https://github.com/iAJue/MoeKoeMusic/ "target="blank"><strong> 🌎 GitHub 倉庫</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
-<a href=" https://github.com/iAJue/MoeKoeMusic/releases "target="blank"><strong> 📦 ️下載安裝包</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
-<a href=" https://MoeJue.cn "target="blank"><strong> 💬  訪問部落格</strong></a>
+<a href="https://github.com/iAJue/MoeKoeMusic/" target="blank"><strong>🌎 GitHub 倉庫</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+<a href="https://github.com/iAJue/MoeKoeMusic/releases" target="blank"><strong>📦️ 下載安裝包</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+<a href="https://MoeJue.cn" target="blank"><strong>💬 訪問部落格</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+<a href="https://Music.MoeKoe.cn" target="blank"><strong>🏠 項目主頁</strong></a>
 </p>
 <p align="center">
     <a href="https://github.com/iAJue/MoeKoeMusic/README.md" target="blank"><strong>🇨🇳 简体中文</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
@@ -23,7 +24,7 @@
 
 ![images](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 
-##前言
+## ❤️ 前言
 
 早在10年前後的樣子，那會在用網頁版QQ的時候我就已經開始使用酷狗音樂了(也是十來年的老粉了)，所以這些年收藏的歌曲全部都在上面. 後來我也嘗試開始使用網易雲或QQ音樂，也嘗試把酷狗的歌單導入進去，但是效果都不盡人意. 我聽的大多是日漫OP，好多歌曲都沒辦法找到.
 
@@ -46,7 +47,7 @@
 - ⚙️  多平臺支持
 - 🛠  更多特性開發中
 
-## Todo List
+## 📢 Todo List
 - [ ] 📺  支持MV播放
 - [x] 🌚 Light/Dark Mode  自動切換
 - [ ] 👆  支持Touch Bar
@@ -193,11 +194,18 @@ npm run electron:build -- -mwl
 您可以根據需要添加其他選項來進一步自定義打包，例如指定x64和arm64架構，或選擇不同的目標格式。
 
 
+## ⭐ 支持項目
+
+如果您覺得這個項目對您有幫助，歡迎給我們一個 Star！您的支持是我們持續改進的動力。
+
+[![GitHub stars](https://img.shields.io/github/stars/iAJue/MoeKoeMusic.svg?style=social&label=Star)](https://github.com/iAJue/MoeKoeMusic)
+
+
 ## ☑️  反饋
 
 如有任何問題或建議，歡迎提交issue或pull request。
 
-## 免責聲明
+## ⚠️ 免責聲明
 0. 本程式是酷狗協力廠商用戶端，並非酷狗官方，需要更完善的功能請下載官方用戶端體驗.
 1. 本項目僅供學習使用，請尊重版權，請勿利用此項目從事商業行為及非法用途!
 2. 使用本項目的過程中可能會產生版權數據。 對於這些版權數據，本項目不擁有它們的所有權。 為了避免侵權，使用者務必在24小時內清除使用本項目的過程中所產生的版權數據。
@@ -215,7 +223,7 @@ npm run electron:build -- -mwl
 
 基於[MIT license](https://opensource.org/licenses/MIT)許可進行開源。
 
-##靈感來源
+## 👍 靈感來源
 
 API原始程式碼來自[MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi)
 (為了不破壞原項目的結構和後期更新反覆運算方便，API未做高度集成.~~ 其實是圖省事~~)
@@ -233,3 +241,7 @@ API原始程式碼來自[MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMu
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/4.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/6.png)
+
+## 🗓️ Star 歷史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=iAJue/MoeKoeMusic&type=Date)](https://www.star-history.com/#iAJue/MoeKoeMusic&Date)

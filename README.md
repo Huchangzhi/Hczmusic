@@ -8,7 +8,8 @@
     <br />
     <a href="https://github.com/iAJue/MoeKoeMusic/" target="blank"><strong>🌎 GitHub仓库</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
     <a href="https://github.com/iAJue/MoeKoeMusic/releases" target="blank"><strong>📦️ 下载安装包</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
-    <a href="https://MoeJue.cn" target="blank"><strong>💬 访问博客</strong></a>
+    <a href="https://MoeJue.cn" target="blank"><strong>💬 访问博客</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+    <a href="https://Music.MoeKoe.cn" target="blank"><strong>🏠 项目主页</strong></a>
   </p>
   <p align="center">
     <a href="https://github.com/iAJue/MoeKoeMusic/README.md" target="blank"><strong>🇨🇳 简体中文</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
@@ -23,7 +24,7 @@
 
 ![images](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 
-## 前言
+## ❤️ 前言
 
 早在10年前后的样子,那会在用网页版QQ的时候我就已经开始使用酷狗音乐了(也是十来年的老粉了),所以这些年收藏的歌曲全部都在上面.后来我也尝试开始使用网易云或QQ音乐,也尝试把酷狗的歌单导入进去,但是效果都不尽人意.我听的大多是日漫OP,好多歌曲都没办法找到.
 
@@ -46,7 +47,7 @@
 - ⚙️ 多平台支持
 - 🛠 更多特性开发中
 
-## Todo List
+## 📢 Todo List
 - [ ] 📺 支持 MV 播放
 - [x] 🌚 Light/Dark Mode 自动切换
 - [ ] 👆 支持 Touch Bar
@@ -192,12 +193,17 @@ npm run build
 
 您可以根据需要添加其他选项来进一步自定义打包，例如指定 x64 和 arm64 架构，或选择不同的目标格式。
 
+## ⭐ 支持项目
 
-## ☑️ 反馈
+如果您觉得这个项目对您有帮助，欢迎给我们一个 Star！您的支持是我们持续改进的动力。
+
+[![GitHub stars](https://img.shields.io/github/stars/iAJue/MoeKoeMusic.svg?style=social&label=Star)](https://github.com/iAJue/MoeKoeMusic)
+
+## ✅ 反馈
 
 如有任何问题或建议，欢迎提交 issue 或 pull request。
 
-## 免责声明
+## ⚠️ 免责声明
 0. 本程序是酷狗第三方客户端，并非酷狗官方，需要更完善的功能请下载官方客户端体验.
 1. 本项目仅供学习使用，请尊重版权，请勿利用此项目从事商业行为及非法用途！
 2. 使用本项目的过程中可能会产生版权数据。对于这些版权数据，本项目不拥有它们的所有权。为了避免侵权，使用者务必在 24 小时内清除使用本项目的过程中所产生的版权数据。
@@ -214,7 +220,7 @@ npm run build
 
 基于 [GNU General Public License v2.0 (GPL-2.0)](https://github.com/iAJue/MoeKoeMusic/blob/main/LICENSE) 许可进行开源。
 
-## 灵感来源
+## 👍 灵感来源
 
 API 源代码来自 [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi) 
 (为了不破坏原项目的结构和后期更新迭代方便,API未做高度集成.~~其实是图省事~~)
@@ -232,3 +238,8 @@ API 源代码来自 [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicA
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/4.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/6.png)
+
+
+## 🗓️ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=iAJue/MoeKoeMusic&type=Date)](https://www.star-history.com/#iAJue/MoeKoeMusic&Date)

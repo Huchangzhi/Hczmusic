@@ -4,12 +4,13 @@
             <img class="profile-pic" :src="user.pic" alt="{{ $t('yong-hu-tou-xiang') }}" />
             <h2 class="section-title">{{ user.nickname }}<span>{{ $t('de-yin-le-ku') }}</span></h2>
             <img v-if="userVip[0] && userVip[0].is_vip == 1" class="user-level"
-                :src="`./assets/images/${userVip[0].product_type === 'svip' ? 'vip2' : 'vip'}.png`"
+                :src="`./assets/images/${userVip[0].product_type === 'svip' ? 'vip' : 'vip2'}.png`"
                 :title="`${$t('gai-nian-ban')} ${userVip[0].vip_end_time}`" />
             <img v-if="userVip[1] && userVip[1].is_vip == 1" class="user-level"
-                :src="`./assets/images/${userVip[1].product_type === 'svip' ? 'vip2' : 'vip'}.png`"
+                :src="`./assets/images/${userVip[1].product_type === 'svip' ? 'vip' : 'vip2'}.png`"
                 :title="`${$t('chang-ting-ban')} ${userVip[1].vip_end_time}`" />
             <span class="sign-in" @click="signIn">签到</span>
+            <span class="sign-in" @click="getVip">VIP</span>
         </div>
         <h2 class="section-title" style="margin-bottom: 0px;">{{ $t('wo-xi-huan-ting') }}</h2>
         <div class="favorite-section">
@@ -48,6 +49,13 @@
         <!-- 音乐卡片网格（显示歌单或关注的歌手） -->
         <div class="music-grid">
             <template v-if="selectedCategory === 0 || selectedCategory === 1 || selectedCategory === 2">
+                <div v-if="selectedCategory === 0 && !isLoading" class="music-card create-playlist-button" @click="goToCloudDrive">
+                    <img :src="`./assets/images/cloud-disk.png`" class="album-image" />
+                    <div class="album-info">
+                        <h3>我的云盘</h3>
+                        <p>(*/ω＼*)</p>
+                    </div>
+                </div>
                 <div class="music-card"
                     v-for="(item, index) in (selectedCategory === 0 ? userPlaylists : selectedCategory === 1 ? collectedPlaylists : collectedAlbums)"
                     :key="index">
@@ -68,7 +76,7 @@
                     <img :src="`./assets/images/ti111mg.png`" class="album-image" />
                     <div class="album-info">
                         <h3>{{ $t('chuang-jian-ge-dan') }}</h3>
-                        <p>(*╹▽╹*)</p>
+                        <p>(≧∀≦)♪</p>
                     </div>
                 </div>
             </template>
@@ -190,6 +198,14 @@ const getplaylist = async () => {
             }).sort((a, b) => a.name === '我喜欢' ? -1 : 1);
             collectedPlaylists.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid !== user.value.userid && !playlist.authors);
             collectedAlbums.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid !== user.value.userid && playlist.authors);
+            
+            const collectedIds = [];
+            playlistResponse.data.info.forEach(playlist => {
+                if (playlist.list_create_userid !== user.value.userid) {
+                    collectedIds.push({list_create_listid:playlist.list_create_listid, listid:playlist.listid});
+                }
+            });
+            localStorage.setItem('collectedPlaylists', JSON.stringify(collectedIds));
         }
     } catch (error) {
         window.$modal.alert(t('xin-zeng-zhang-hao-qing-xian-zai-guan-fang-ke-hu-duan-zhong-deng-lu-yi-ci')); 
@@ -210,6 +226,10 @@ const createPlaylist = async () => {
     }
 }
 
+const goToCloudDrive= () => {
+    router.push('/CloudDrive');
+}
+
 const goToArtistDetail = (artist) => {
     if (!artist.singerid) return;
     router.push({
@@ -228,6 +248,16 @@ const signIn = async () => {
         }
     } catch (error) {
         window.$modal.alert('签到失败，请勿频繁签到');
+    }
+}
+const getVip = async () => {
+    try{
+        const vipResponse = await get('/youth/day/vip');
+        if (vipResponse.status === 1) {
+            window.$modal.alert(`签到成功，获得1天畅听VIP`);
+        }
+    } catch (error) {
+        window.$modal.alert('获取VIP失败, 一天仅限一次');
     }
 }
 </script>

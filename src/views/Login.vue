@@ -57,7 +57,7 @@
                 {{ $t('meng-yin-cheng-nuo-bu-hui-bao-cun-ni-de-ren-he-zhang-hao-xin-xi-dao-yun-duan-ni-de-mi-ma-hui-zai-ben-di-jin-hang-jia-mi-hou-zai-chuan-shu-dao-ku-gou-guan-fang-meng-yin-bing-fei-ku-gou-guan-fang-wang-zhan-shu-ru-zhang-hao-xin-xi-qian-qing-shen-zhong-kao-lv-er-wei-ma-sao-ma-hou-xu-yao-deng-dai-ji-fen-zhong-cai-hui-deng-lu-cheng-gong') }}<b>{{ $t('tui-jian') }}</b>{{ $t('shi-yong-yan-zheng-ma-deng-lu') }}
             </p>
             <p class="register-link">
-                <a href="https://activity.kugou.com/getvips/v-4163b2d0/index.html" target="_blank">{{ $t('zhu-ce') }}</a>
+                <a @click="openRegisterUrl('https://activity.kugou.com/getvips/v-4163b2d0/index.html')" href="#">{{ $t('zhu-ce') }}</a>
             </p>
         </el-card>
     </div>
@@ -70,6 +70,7 @@ import { MoeAuthStore } from '../stores/store';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
+import { openRegisterUrl } from '../utils/utils';
 const { t } = useI18n();
 const loginType = ref(t('shou-ji-hao-deng-lu'));
 const options = [t('shou-ji-hao-deng-lu'), t('you-xiang-deng-lu'), t('sao-ma-deng-lu')];

@@ -167,13 +167,7 @@ const performSearch = async () => {
     if (!searchQuery.value) return;
     isLoading.value = true;
     try {
-        const response = await get('/search', {
-            keywords: searchQuery.value,
-            page: currentPage.value,
-            pagesize: pageSize.value,
-            type: searchType.value 
-        });
-
+        const response = await get(`/search?keywords=${encodeURIComponent(searchQuery.value)}&page=${currentPage.value}&pagesize=${pageSize.value}&type=${searchType.value}`)
         if (response.status === 1) {
             searchResults.value = response.data.lists;
             totalPages.value = Math.ceil(response.data.total / pageSize.value);

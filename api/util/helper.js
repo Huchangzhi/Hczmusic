@@ -74,6 +74,17 @@ const signKey = (hash, mid, userid, appid) => {
 };
 
 /**
+ * signKey 加密云盘key
+ * @param {string} hash
+ * @param {string} pid
+ * @returns {string} 加密后的sign
+ */
+const signCloudKey = (hash, pid) => {
+  const str = 'ebd1ac3134c880bda6a2194537843caa0162e2e7';
+  return cryptoMd5(`musicclound${hash}${pid}${str}`);
+};
+
+/**
  * signParams 加密
  * @param {string | number} data
  * @param {(string | number)?} appid
@@ -96,6 +107,7 @@ module.exports = {
   signKey,
   signParams,
   signParamsKey,
+  signCloudKey,
   signatureAndroidParams,
   signatureRegisterParams,
   signatureWebParams,

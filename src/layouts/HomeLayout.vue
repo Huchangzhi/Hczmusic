@@ -10,12 +10,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, getCurrentInstance, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import Header from "@/components/Header.vue";
 import PlayerControl from "@/components/PlayerControl.vue";
-import { setTheme } from '../utils/utils';
+import { setTheme, applyColorTheme } from '../utils/utils';
 const playerControl = ref(null);
-const { proxy } = getCurrentInstance();
 const isOnline = ref(navigator.onLine);
 
 // 监听网络状态变化
@@ -34,7 +33,7 @@ const handleNetworkChange = (online) => {
 onMounted(() => {
     const savedConfig = JSON.parse(localStorage.getItem('settings'));
     if (savedConfig) {
-        proxy.$applyColorTheme(savedConfig['themeColor']);
+        applyColorTheme(savedConfig['themeColor']);
     }
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
