@@ -78,6 +78,15 @@ importers:
       wait-on:
         specifier: ^8.0.1
         version: 8.0.4
+      workbox-core:
+        specifier: ^7.3.0
+        version: 7.3.0
+      workbox-precaching:
+        specifier: ^7.3.0
+        version: 7.3.0
+      workbox-window:
+        specifier: ^7.3.0
+        version: 7.3.0
 
 packages:
 
