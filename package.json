@@ -163,7 +163,7 @@
     "electron-store": "^10.0.0",
     "electron-updater": "^6.6.2",
     "music-metadata": "^11.7.3",
-    "pinia": "^2.2.4",
+    "pinia": "^3.0.0",
     "pinia-plugin-persistedstate": "^4.1.1",
     "tree-kill": "^1.2.2",
     "vue": "^3.5.12",
