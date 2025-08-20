@@ -1,20 +1,24 @@
 {
   "name": "hmusic",
   "version": "1.4.5",
+  "homepage": "https://github.com/iAJue/MoeKoeMusic",
   "main": "electron/main.js",
   "scripts": {
     "install-all": "npm install && cd api && npm install",
     "serve": "vite",
     "build": "vite build",
+    "build:docker": "cross-env VITE_APP_API_URL=/api vite build",
     "preview": "vite preview",
     "electron:serve": "cross-env NODE_ENV=development electron .",
     "api": "node api/app.js",
     "dev": "npm run api & npm run serve & npm run electron:serve",
     "build:api:win": "npm run --prefix ./api pkgwin",
     "build:api:linux": "npm run --prefix ./api pkglinux",
+    "build:api:linux-aarch64": "npm run --prefix ./api pkglinux-aarch64",
     "build:api:macos": "npm run --prefix ./api pkgmacos",
     "electron:build:win": "run-s build:api:win \"electron:build -- --win --publish never\"",
     "electron:build:linux": "run-s build:api:linux \"electron:build -- --linux --publish never\"",
+    "electron:build:linux-aarch64": "run-s build:api:linux-aarch64 \"electron:build -- --linux --publish never\"",
     "electron:build:macos": "run-s build:api:macos \"electron:build -- --mac --universal --publish never\"",
     "electron:build": "cross-env NODE_ENV=production electron-builder"
   },
@@ -62,6 +66,14 @@
       "package.json"
     ],
     "icon": "build/icons/icon",
+    "protocols": [
+      {
+        "name": "MoeKoe Music Protocol",
+        "schemes": [
+          "moekoe"
+        ]
+      }
+    ],
     "win": {
       "icon": "build/icons/icon.ico",
       "target": [
@@ -98,7 +110,15 @@
         "zip"
       ],
       "identity": null,
-      "artifactName": "${productName}.${ext}"
+      "artifactName": "${productName}.${ext}",
+      "protocols": [
+        {
+          "name": "MoeKoe Music Protocol",
+          "schemes": [
+            "moekoe"
+          ]
+        }
+      ]
     },
     "dmg": {
       "sign": false
@@ -129,6 +149,7 @@
     "electron-builder": "^25.1.8",
     "npm-run-all": "^4.1.5",
     "vite": "^5.4.10",
+    "vite-plugin-pwa": "^1.0.0",
     "vue-loader": "^17.3.1",
     "wait-on": "^8.0.1"
   },
@@ -136,8 +157,8 @@
     "electron-is-dev": "^3.0.1",
     "electron-log": "^5.2.0",
     "electron-store": "^10.0.0",
-    "electron-updater": "^6.3.9",
-    "element-plus": "^2.8.7",
+    "electron-updater": "^6.6.2",
+    "music-metadata": "^11.7.3",
     "pinia": "^2.2.4",
     "pinia-plugin-persistedstate": "^4.1.1",
     "tree-kill": "^1.2.2",

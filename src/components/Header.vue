@@ -39,7 +39,7 @@
                                 </router-link>
                             </li>
                             <li>
-                                <a @click="openRegisterUrl(downloadUrl || 'https://github.com/iAJue/MoeKoeMusic/releases')" href="#" style="position: relative;">
+                                <a @click="openRegisterUrl(downloadUrl || 'https://github.com/iAJue/MoeKoeMusic/releases')" style="position: relative;">
                                     <i class="fab fa-github"></i> {{ $t('geng-xin') }}
                                     <i v-if="showNewBadge" class="new-badge">new</i>
                                 </a>

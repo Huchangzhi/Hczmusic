@@ -12,11 +12,11 @@
             </div>
         </div>
         <div class="player-bar">
-            <div class="album-art" @click="toggleLyrics">
+            <div class="album-art" @click="toggleLyrics(currentSong.hash, currentTime)">
                 <img v-if="currentSong.img" :src="currentSong.img" alt="Album Art" />
                 <i v-else class="fas fa-music"></i>
             </div>
-            <div class="song-info" @click="toggleLyrics">
+            <div class="song-info" @click="toggleLyrics(currentSong.hash, currentTime)">
                 <div class="song-title">{{ currentSong?.name || "MoeKoeMusic" }}</div>
                 <div class="artist">{{ currentSong?.author || "MoeJue" }}</div>
             </div>
@@ -34,10 +34,23 @@
             <div class="extra-controls">
                 <button class="extra-btn" title="桌面歌词" v-if="isElectron()" @click="desktopLyrics"><i
                         class="fas">词</i></button>
+                <div class="playback-speed">
+                    <button class="extra-btn" @click="toggleSpeedMenu" title="播放速度">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </button>
+                    <div v-if="showSpeedMenu" class="speed-menu">
+                        <div v-for="speed in playbackSpeeds" :key="speed" class="speed-option"
+                            :class="{ active: currentSpeed === speed }" @click="changePlaybackSpeed(speed)">
+                            {{ speed }}x
+                        </div>
+                    </div>
+                </div>
                 <button class="extra-btn" title="我喜欢" @click="playlistSelect.toLike()"><i
                         class="fas fa-heart"></i></button>
                 <button class="extra-btn" title="收藏至" @click="playlistSelect.fetchPlaylists()"><i
                         class="fas fa-add"></i></button>
+                <button class="extra-btn" title="分享歌曲" @click="share('share?hash=' + currentSong.hash)"><i
+                        class="fas fa-share"></i></button>
                 <button class="extra-btn" @click="togglePlaybackMode">
                     <i v-if="currentPlaybackModeIndex != '2'" :class="currentPlaybackMode.icon"
                         :title="currentPlaybackMode.title"></i>
@@ -60,7 +73,8 @@
     </div>
 
     <!-- 播放队列 -->
-    <QueueList :current-song="currentSong" @add-song-to-queue="onQueueSongAdd" @add-cloud-music-to-queue="onQueueCloudSongAdd" ref="queueList" />
+    <QueueList :current-song="currentSong" @add-song-to-queue="onQueueSongAdd"
+        @add-cloud-music-to-queue="onQueueCloudSongAdd" @add-local-music-to-queue="onQueueLocalSongAdd" ref="queueList" />
 
     <!-- 全屏歌词界面 -->
     <transition name="slide-up">
@@ -68,7 +82,10 @@
             :style="(lyricsBackground == 'on' ? ({ backgroundImage: `url(${currentSong?.img || 'https://random.MoeJue.cn/randbg.php'})` }) : ({ background: 'var(--secondary-color)' }))">
             <div class="lyrics-screen">
                 <div class="close-btn">
-                    <i class="fas fa-chevron-down" @click="toggleLyrics"></i>
+                    <i class="fas fa-chevron-down" @click="toggleLyrics(currentSong.hash, currentTime)"></i>
+                </div>
+                <div class="lyrics-mode-btn" v-if="hasMultiLyricsMode" @click="switchLyricsMode" :title="lyricsMode === 'translation' ? '切换到音译' : '切换到翻译'">
+                    <i class="fas fa-language"></i>
                 </div>
 
                 <div class="left-section">
@@ -112,8 +129,7 @@
                             <i class="fas fa-step-forward"></i>
                         </button>
                         <button class="control-btn" @click="togglePlaybackMode">
-                            <i v-if="currentPlaybackModeIndex != '2'" :class="currentPlaybackMode.icon"
-                                :title="currentPlaybackMode.title"></i>
+                            <i v-if="currentPlaybackModeIndex != '2'" :class="currentPlaybackMode.icon" :title="currentPlaybackMode.title"></i>
                             <span v-else class="loop-icon" :title="currentPlaybackMode.title">
                                 <i class="fas fa-repeat"></i>
                                 <sup>1</sup>
@@ -121,14 +137,18 @@
                         </button>
                     </div>
                 </div>
-                <div id="lyrics-container" @wheel="handleLyricsWheel" @mousedown="startLyricsDrag" @mousemove="handleLyricsDrag" @mouseup="endLyricsDrag" @mouseleave="endLyricsDrag">
+                <div id="lyrics-container" @wheel="handleLyricsWheel">
                     <div v-if="lyricsData.length > 0" id="lyrics"
                         :style="{ fontSize: lyricsFontSize, transform: `translateY(${scrollAmount ? scrollAmount + 'px' : '50%'})` }">
-                        <div v-for="(lineData, lineIndex) in lyricsData" :key="lineIndex" class="line">
-                            <span v-for="(charData, charIndex) in lineData.characters" :key="charIndex" class="char"
-                                :class="{ highlight: charData.highlighted }">
-                                {{ charData.char }}
-                            </span>
+                        <div class="line-group" v-for="(lineData, lineIndex) in lyricsData" :key="lineIndex">
+                            <div class="line" @click="handleLyricsClick(lineIndex)" :class="{ click: lyricsFlag, [lyricsAlign]: true }">
+                                <span v-for="(charData, charIndex) in lineData.characters" :key="charIndex" class="char"
+                                    :class="{ highlight: charData.highlighted }">
+                                    {{ charData.char }}
+                                </span>
+                            </div>
+                            <div class="line translated" :class="{ [lyricsAlign]: true }" v-show="lineData.translated && lyricsMode === 'translation'">{{ lineData.translated }}</div>
+                            <div class="line romanized" :class="{ [lyricsAlign]: true }" v-show="lineData.romanized && lyricsMode === 'romanization'">{{ lineData.romanized }}</div>
                         </div>
                     </div>
                     <div v-else class="no-lyrics">{{ SongTips }}</div>
@@ -148,6 +168,8 @@ import { useMusicQueueStore } from '../stores/musicQueue';
 import { useI18n } from 'vue-i18n';
 import PlaylistSelectModal from './PlaylistSelectModal.vue';
 import QueueList from './QueueList.vue';
+import { useRouter } from 'vue-router';
+import { getCover, share } from '../utils/utils';
 
 // 从统一入口导入所有模块
 import {
@@ -164,13 +186,17 @@ import {
 const queueList = ref(null);
 const playlistSelect = ref(null);
 const { t } = useI18n();
+const router = useRouter();
 const musicQueueStore = useMusicQueueStore();
 const playlists = ref([]);
 const currentTime = ref(0);
 const lyricsFontSize = ref('24px');
+const lyricsAlign = ref('center');
 const lyricsBackground = ref('on');
-const isDragging = ref(false);
 const sliderElement = ref(null);
+
+const isDragging = ref(false);
+const lyricsFlag = ref(false);
 
 // 辅助函数
 const { isElectron, throttle, getVip, desktopLyrics } = useHelpers(t);
@@ -207,16 +233,16 @@ const updateCurrentTime = throttle(() => {
     }
 
     const savedConfig = JSON.parse(localStorage.getItem('settings') || '{}');
-    if (audio && lyricsData.value.length) {
-        if (showLyrics.value) {
-            highlightCurrentChar(audio.currentTime);
-        }
+    if (audio && (lyricsData.value.length || isLyrics === false)) {
+        if (savedConfig?.lyricsAlign != lyricsAlign.value) lyricsAlign.value = savedConfig.lyricsAlign;
 
+        highlightCurrentChar(audio.currentTime, !lyricsFlag.value);
         if (isElectron()) {
             if (savedConfig?.desktopLyrics === 'on') {
                 window.electron.ipcRenderer.send('lyrics-data', {
                     currentTime: audio.currentTime,
-                    lyricsData: JSON.parse(JSON.stringify(lyricsData.value))
+                    lyricsData: JSON.parse(JSON.stringify(lyricsData.value)),
+                    currentSongHash: currentSong.value.hash
                 });
             }
             if (savedConfig?.apiMode === 'on') {
@@ -227,9 +253,17 @@ const updateCurrentTime = throttle(() => {
                     duration: audio.duration
                 });
             }
+            if (window.electron.platform == 'darwin' && savedConfig?.touchBar == 'on') {
+                const currentLine = getCurrentLineText(audio.currentTime);
+                window.electron.ipcRenderer.send(
+                    "update-current-lyrics",
+                    currentLine
+                );
+            }
         }
-    } else if (isElectron() && currentSong.value?.hash && (savedConfig?.desktopLyrics === 'on' || savedConfig?.apiMode === 'on')) {
-        getLyrics(currentSong.value.hash);
+    } else if (isElectron() && (savedConfig?.desktopLyrics === 'on' || savedConfig?.apiMode === 'on')) {
+        if(isLyrics === false) return;
+        getCurrentLyrics();
     }
 
     localStorage.setItem('player_progress', audio.currentTime);
@@ -237,10 +271,10 @@ const updateCurrentTime = throttle(() => {
 
 // 初始化各个模块
 const audioController = useAudioController({ onSongEnd, updateCurrentTime });
-const { playing, isMuted, volume, changeVolume, audio } = audioController;
+const { playing, isMuted, volume, changeVolume, audio, playbackRate, setPlaybackRate } = audioController;
 
 const lyricsHandler = useLyricsHandler(t);
-const { lyricsData, originalLyrics, showLyrics, scrollAmount, SongTips, toggleLyrics, getLyrics, highlightCurrentChar, resetLyricsHighlight } = lyricsHandler;
+const { lyricsData, originalLyrics, showLyrics, scrollAmount, SongTips, lyricsMode, toggleLyrics, getLyrics, highlightCurrentChar, resetLyricsHighlight, getCurrentLineText, scrollToCurrentLine, toggleLyricsMode } = lyricsHandler;
 
 const progressBar = useProgressBar(audio, resetLyricsHighlight);
 const { progressWidth, isProgressDragging, showTimeTooltip, tooltipPosition, tooltipTime, climaxPoints, formatTime, getMusicHighlights, onProgressDragStart, updateProgressFromEvent, updateTimeTooltip, hideTimeTooltip } = progressBar;
@@ -251,14 +285,84 @@ const { currentPlaybackModeIndex, currentPlaybackMode, playedSongsStack, current
 const mediaSession = useMediaSession();
 
 const songQueue = useSongQueue(t, musicQueueStore);
-const { currentSong, NextSong, addSongToQueue, addCloudMusicToQueue, addToNext, getPlaylistAllSongs, addPlaylistToQueue, addCloudPlaylistToQueue } = songQueue;
+const { currentSong, NextSong, addSongToQueue, addCloudMusicToQueue, addLocalMusicToQueue, addLocalPlaylistToQueue, addToNext, getPlaylistAllSongs, addPlaylistToQueue, addCloudPlaylistToQueue } = songQueue;
+
+// 添加自动切换定时器引用
+let autoSwitchTimer = null;
+// 恢复歌词正常滚动计时器
+let lyricScrollTimer = null;
+// 自动切换计数器和最大重试次数
+let autoSwitchCount = 0;
+const maxAutoSwitchRetries = 3;
+
+// 处理自动切换逻辑的函数
+const handleAutoSwitch = () => {
+    console.log('[PlayerControl] 检查自动切换重试次数:', autoSwitchCount, '/', maxAutoSwitchRetries);
+    if (autoSwitchCount < maxAutoSwitchRetries) {
+        autoSwitchCount++;
+        console.log(`[PlayerControl] 自动切换尝试 ${autoSwitchCount}/${maxAutoSwitchRetries}`);
+        autoSwitchTimer = setTimeout(() => {
+            playSongFromQueue('next');
+        }, 3000);
+        return true;
+    } else {
+        console.log('[PlayerControl] 已达到最大重试次数，停止自动切换');
+        window.$modal.alert('已达到最大重试次数，请手动选择歌曲');
+        autoSwitchCount = 0;
+        return false;
+    }
+};
+
+// 清除自动切换定时器的函数
+const clearAutoSwitchTimer = () => {
+    if (autoSwitchTimer) {
+        console.log('[PlayerControl] 取消自动切换到下一首');
+        clearTimeout(autoSwitchTimer);
+        autoSwitchTimer = null;
+    }
+};
+
+// 恢复歌词正常滚动的节流函数
+const restoreLyricsScroll = throttle(() => {
+    if (lyricScrollTimer) clearTimeout(lyricScrollTimer);
+    lyricScrollTimer = setTimeout(() => {
+        console.log('[PlayerControl] 恢复歌词正常滚动');
+        lyricScrollTimer = null;
+        lyricsFlag.value = false;
+        const currentLine = getCurrentLineText(audio.currentTime);
+        scrollToCurrentLine(currentLine);
+    }, 5000);
+}, 1000);
+
+// 获取歌词的节流函数
+let isLyrics;
+const getCurrentLyrics = throttle(async() => {
+    if (currentSong.value.hash) {
+        isLyrics = await getLyrics(currentSong.value.hash);
+    }
+}, 1000);
 
 // 计算属性
 const formattedCurrentTime = computed(() => formatTime(currentTime.value));
 const formattedDuration = computed(() => formatTime(currentSong.value?.timeLength || 0));
 
+// 判断是否有多种歌词模式（同时有翻译和音译）
+const hasMultiLyricsMode = computed(() => {
+    if (!lyricsData.value || lyricsData.value.length === 0) return false;
+    
+    // 检查是否至少有一行同时包含翻译和音译
+    return lyricsData.value.some(line => line.translated && line.romanized);
+});
+
+// 切换歌词显示模式（翻译/音译）
+const switchLyricsMode = () => {
+    toggleLyricsMode();
+};
+
 // 播放歌曲
 const playSong = async (song) => {
+    clearAutoSwitchTimer();
+
     try {
         console.log('[PlayerControl] 开始播放歌曲:', song.name);
 
@@ -271,9 +375,9 @@ const playSong = async (song) => {
         }
 
         currentSong.value = structuredClone(song);
-        lyricsData.value = [];
 
         audio.src = song.url;
+        setPlaybackRate(currentSpeed.value);
         console.log('[PlayerControl] 设置音频源:', song.url);
 
         try {
@@ -307,13 +411,15 @@ const playSong = async (song) => {
             document.title = song.name;
         }
 
+        // 清空歌词数据
+        lyricsData.value = [];
+        if(song?.isLocal) return;
         // 保存当前歌曲到本地存储
         localStorage.setItem('current_song', JSON.stringify(currentSong.value));
 
-        // 获取歌词
-        getLyrics(currentSong.value.hash);
-
         getVip();
+        // 获取歌词
+        getCurrentLyrics();
         getMusicHighlights(currentSong.value.hash);
     } catch (error) {
         console.error('[PlayerControl] 播放音乐时发生错误:', error);
@@ -344,8 +450,11 @@ const togglePlayPause = async () => {
                     audio.src = song.url;
                 } else if (song.isCloud) {
                     console.log('[PlayerControl] 云音乐没有URL，重新获取');
-                    addCloudMusicToQueue(song.hash, song.name, song.author, song.timeLength);
+                    addCloudMusicToQueue(song.hash, song.name, song.author, song.timeLength, song.img);
                     return;
+                }else if(song.isLocal){
+                    console.log('[PlayerControl] 本地音乐没有URL，重新获取');
+                    addLocalMusicToQueue(song);
                 } else {
                     console.log('[PlayerControl] 歌曲没有URL，重新获取');
                     addSongToQueue(song.hash, song.name, song.img, song.author);
@@ -377,6 +486,8 @@ const togglePlayPause = async () => {
 
 // 从队列中播放歌曲
 const playSongFromQueue = async (direction) => {
+    clearAutoSwitchTimer();
+
     if (musicQueueStore.queue.length === 0) {
         console.log('[PlayerControl] 队列为空');
         window.$modal.alert(t('ni-huan-mei-you-tian-jia-ge-quo-kuai-qu-tian-jia-ba'));
@@ -384,7 +495,8 @@ const playSongFromQueue = async (direction) => {
     }
 
     console.log(`[PlayerControl] 从队列播放${direction === 'next' ? '下' : '上'}一首`);
-
+    audio.pause();
+    playing.value = false;
     if (direction == 'next' && NextSong.value.length > 0) {
         // 添加下一首播放
         console.log('[PlayerControl] 播放预定的下一首:', NextSong.value[0].name);
@@ -398,10 +510,8 @@ const playSongFromQueue = async (direction) => {
                 console.log('[PlayerControl] 获取到下一首歌曲，开始播放:', result.song.name);
                 await playSong(result.song);
             } else if (result && result.shouldPlayNext) {
-                console.log('[PlayerControl] 预定的下一首无法播放，3秒后自动切换下一首');
-                setTimeout(() => {
-                    playSongFromQueue('next');
-                }, 3000);
+                console.log('[PlayerControl] 预定的下一首无法播放');
+                handleAutoSwitch();
             } else {
                 console.error('[PlayerControl] 无法获取下一首歌曲信息');
             }
@@ -442,8 +552,11 @@ const playSongFromQueue = async (direction) => {
                 targetSong.name,
                 targetSong.author,
                 targetSong.timeLength,
+                targetSong.img,
                 false // 不重置播放位置，只获取URL
             );
+        } else if (targetSong.isLocal) {
+            result = await addLocalMusicToQueue(targetSong, false);
         } else {
             result = await addSongToQueue(
                 targetSong.hash,
@@ -459,10 +572,8 @@ const playSongFromQueue = async (direction) => {
             console.log('[PlayerControl] 成功获取歌曲URL，开始播放:', result.song.name);
             await playSong(result.song);
         } else if (result && result.shouldPlayNext) {
-            console.log('[PlayerControl] 当前歌曲无法播放，3秒后自动切换到下一首');
-            setTimeout(() => {
-                playSongFromQueue('next');
-            }, 3000);
+            console.log('[PlayerControl] 云盘歌曲无法播放');
+            handleAutoSwitch();
         } else {
             console.error('[PlayerControl] 无法获取歌曲URL');
         }
@@ -471,9 +582,7 @@ const playSongFromQueue = async (direction) => {
         // 如果出错，尝试播放下一首
         if (direction === 'next') {
             console.log('[PlayerControl] 发生错误，3秒后尝试播放下一首');
-            setTimeout(() => {
-                playSongFromQueue('next');
-            }, 3000);
+            handleAutoSwitch();
         }
     }
 };
@@ -487,9 +596,21 @@ const handleRandomPlayback = (direction, currentIndex) => {
     } else if (direction === 'previous') {
         // 向前随机一首新歌曲
         let newIndex;
+        let attempts = 0;
+        const maxAttempts = musicQueueStore.queue.length * 2; // 防止死循环
+        
         do {
             newIndex = Math.floor(Math.random() * musicQueueStore.queue.length);
-        } while (playedSongsStack.value.length > 0 && newIndex === playedSongsStack.value[currentStackIndex.value]);
+            attempts++;
+            
+            // 如果尝试次数过多，直接返回
+            if (attempts >= maxAttempts) {
+                break;
+            }
+        } while (playedSongsStack.value.length > 0 && 
+                 (newIndex === playedSongsStack.value[currentStackIndex.value] ||
+                  (musicQueueStore.queue.length >= 10 && playedSongsStack.value.length > 0 && 
+                   playedSongsStack.value.slice(-Math.min(10, playedSongsStack.value.length)).includes(newIndex))));
 
         playedSongsStack.value.unshift(newIndex);
         return newIndex;
@@ -500,9 +621,21 @@ const handleRandomPlayback = (direction, currentIndex) => {
     } else if (direction === 'next') {
         // 随机一首新歌曲
         let newIndex;
+        let attempts = 0;
+        const maxAttempts = musicQueueStore.queue.length * 2; // 防止死循环
+        
         do {
             newIndex = Math.floor(Math.random() * musicQueueStore.queue.length);
-        } while (playedSongsStack.value.length > 0 && newIndex === playedSongsStack.value[currentStackIndex.value]);
+            attempts++;
+            
+            // 如果尝试次数过多，直接返回
+            if (attempts >= maxAttempts) {
+                break;
+            }
+        } while (playedSongsStack.value.length > 0 && 
+                 (newIndex === playedSongsStack.value[currentStackIndex.value] ||
+                  (musicQueueStore.queue.length >= 10 && playedSongsStack.value.length > 0 && 
+                   playedSongsStack.value.slice(-Math.min(10, playedSongsStack.value.length)).includes(newIndex))));
 
         // 截断未来的历史记录
         if (currentStackIndex.value < playedSongsStack.value.length - 1) {
@@ -537,7 +670,6 @@ const onDragStart = (event) => {
         document.addEventListener('mouseup', onDragEnd);
     }
 };
-
 const onDrag = (event) => {
     if (isDragging.value && sliderElement.value) {
         const sliderWidth = sliderElement.value.offsetWidth;
@@ -549,7 +681,6 @@ const onDrag = (event) => {
         console.log('[PlayerControl] 拖动设置音量:', volume.value, '实际audio.volume:', audio.volume);
     }
 };
-
 const onDragEnd = () => {
     isDragging.value = false;
     sliderElement.value = null;
@@ -571,18 +702,36 @@ const handleLyricsWheel = (event) => {
     if (!audio.duration || !currentSong.value?.hash) return;
     
     event.preventDefault();
-    // 计算调整时间，向下滚动为前进，向上滚动为后退，每次5秒
-    const delta = Math.sign(event.deltaY);
-    const adjustmentSeconds = 5 * delta;
-    
-    // 计算新时间，并确保在有效范围内
-    const newTime = Math.max(0, Math.min(audio.duration, audio.currentTime + adjustmentSeconds));
-    
-    // 设置新时间
-    audio.currentTime = newTime;
-    progressWidth.value = (newTime / audio.duration) * 100;
-    console.log(`[PlayerControl] 滚轮${delta > 0 ? '前进' : '后退'}${Math.abs(adjustmentSeconds)}秒，当前进度:`, newTime);
+    const lyricsContainer = document.getElementById('lyrics-container');
+    if (!lyricsContainer) return;
+    const lineGroups = document.querySelectorAll('.line-group');
+    const firstLineElement = lineGroups[0];
+    const lastLineElement = lineGroups[lineGroups.length - 1];
+    if (!firstLineElement || (firstLineElement == lastLineElement)) return;
+    const lineHeight = lastLineElement.offsetHeight;
+    const containerHeight = lyricsContainer.offsetHeight;
+    // 计算滚动的距离
+    const scrollNumber = scrollAmount.value - (event.deltaY * 1.5);
+    const maxScrollNumber = ((containerHeight - firstLineElement.offsetHeight) / 2);
+    const miniScrollNumber = -lastLineElement.offsetTop + (containerHeight / 2) - (lineHeight / 2);
+    if (scrollNumber > maxScrollNumber) scrollAmount.value = maxScrollNumber;
+    else if (scrollNumber < miniScrollNumber) scrollAmount.value = miniScrollNumber;
+    else scrollAmount.value = scrollNumber;
+    lyricsFlag.value = true;
+    restoreLyricsScroll();
 };
+
+const handleLyricsClick = (lineIndex) => {
+    if (!lyricsFlag.value) return;
+    console.log('[PlayerControl] 点击歌词:', lineIndex);
+    const lineStartTime = lyricsData.value[lineIndex].characters[0].startTime;
+    audio.currentTime = lineStartTime / 1000;
+    resetLyricsHighlight(audio.currentTime);
+    scrollToCurrentLine(lineIndex);
+    lyricsFlag.value = false;
+    if (lyricScrollTimer) clearTimeout(lyricScrollTimer);
+    lyricScrollTimer = null;
+}
 
 // 键盘快捷键
 const handleKeyDown = (event) => {
@@ -601,9 +750,7 @@ const handleKeyDown = (event) => {
             playSongFromQueue('next');
             break;
         case 'Escape':
-            if (showLyrics.value) {
-                toggleLyrics();
-            }
+            if (showLyrics.value) toggleLyrics(currentSong.value.hash, audio.currentTime);
             break;
     }
 };
@@ -626,66 +773,53 @@ const setupMediaShortcuts = () => {
     window.electron.ipcRenderer.on('toggle-mute', toggleMute);
     window.electron.ipcRenderer.on('toggle-like', () => playlistSelect.value.toLike());
     window.electron.ipcRenderer.on('toggle-mode', togglePlaybackMode);
+    window.electron.ipcRenderer.on('url-params', (data) => {
+        console.log('[PlayerControl] 接收到URL参数:', data);
+
+        // 处理歌曲哈希参数
+        if (data.hash) {
+            console.log('[PlayerControl] 从URL启动播放歌曲:', data.hash);
+            songQueue.privilegeSong(data.hash).then(res => {
+                if (res.status == 1) {
+                    const songInfo = res.data[0];
+                    addSongToQueue(songInfo.hash, songInfo.albumname, getCover(songInfo.info.image, 480), songInfo.singername)
+                }
+            })
+        }else if (data.listid) {
+            // 处理歌单ID参数
+            console.log('[PlayerControl] 从URL启动跳转到歌单:', data.listid);
+            router.push({
+                path: '/PlaylistDetail',
+                query: { global_collection_id: data.listid }
+            });
+        }
+    });
 };
 
 // 切换静音
 const toggleMute = () => {
     isMuted.value = !isMuted.value;
     audio.muted = isMuted.value;
-    if (isMuted.value) {
-        volume.value = 0;
-    } else {
-        volume.value = audio.volume * 100;
-    }
+    if (isMuted.value) volume.value = 0;
+    else volume.value = audio.volume * 100;
     localStorage.setItem('player_volume', volume.value);
     console.log('[PlayerControl] 切换静音:', isMuted.value, '音量:', volume.value, '实际audio.volume:', audio.volume);
 };
 
-// 添加拖动相关状态变量
-const isDraggingLyrics = ref(false);
-const lyricsDragStartY = ref(0);
-const lyricsDragStartTime = ref(0);
-const tempTime = ref(0);
+const showSpeedMenu = ref(false);
+const currentSpeed = ref(1.0);
+const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
-// 开始拖动歌词
-const startLyricsDrag = (event) => {
-    if (!audio.duration || !currentSong.value?.hash) return;
-    
-    isDraggingLyrics.value = true;
-    lyricsDragStartY.value = event.clientY;
-    lyricsDragStartTime.value = audio.currentTime;
-    tempTime.value = audio.currentTime;
-    
-    console.log('[PlayerControl] 开始拖动歌词');
+// 切换速度菜单
+const toggleSpeedMenu = () => {
+    showSpeedMenu.value = !showSpeedMenu.value;
 };
 
-// 处理歌词拖动
-const handleLyricsDrag = (event) => {
-    if (!isDraggingLyrics.value) return;
-    
-    // 计算垂直移动距离
-    const deltaY = event.clientY - lyricsDragStartY.value;
-    
-    // 根据移动距离计算时间调整，向上拖动前进，向下拖动后退
-    // 灵敏度因子：每移动100像素调整30秒
-    const sensitivityFactor = 30 / 100;
-    const timeAdjustment = -deltaY * sensitivityFactor;
-    
-    // 计算新时间并确保在有效范围内
-    tempTime.value = Math.max(0, Math.min(audio.duration, lyricsDragStartTime.value + timeAdjustment));
-    
-    // 更新进度条显示
-    progressWidth.value = (tempTime.value / audio.duration) * 100;
-    
-    console.log(`[PlayerControl] 拖动歌词预览进度: ${tempTime.value.toFixed(2)}s / ${audio.duration.toFixed(2)}s`);
-};
-
-// 结束拖动歌词
-const endLyricsDrag = () => {
-    if (!isDraggingLyrics.value) return;
-    isDraggingLyrics.value = false;
-    audio.currentTime = tempTime.value;
-    console.log('[PlayerControl] 结束拖动歌词，设置最终进度:', tempTime.value);
+// 改变播放速度
+const changePlaybackSpeed = (speed) => {
+    currentSpeed.value = speed;
+    setPlaybackRate(speed);
+    showSpeedMenu.value = false;
 };
 
 // 组件挂载
@@ -704,6 +838,7 @@ onMounted(() => {
 
             // 如果有URL，恢复播放源
             if (savedSong.url) {
+                if(savedSong.isLocal) return;
                 console.log('[PlayerControl] 从缓存恢复音频源:', savedSong.url);
                 audio.src = savedSong.url;
             } else {
@@ -717,8 +852,7 @@ onMounted(() => {
     }
 
     // 初始化播放模式
-    currentPlaybackModeIndex.value = localStorage.getItem('player_playback_mode') || 1;
-    audio.loop = currentPlaybackModeIndex.value == 2;
+    playbackMode.initPlaybackMode();
 
     // 初始化设置
     const settings = JSON.parse(localStorage.getItem('settings') || '{}');
@@ -745,6 +879,13 @@ onMounted(() => {
         progressWidth.value = (audio.currentTime / currentSong.value.timeLength) * 100;
     }
 
+    // 恢复播放速度设置
+    const savedSpeed = localStorage.getItem('player_speed');
+    if (savedSpeed) {
+        currentSpeed.value = parseFloat(savedSpeed);
+        setPlaybackRate(currentSpeed.value);
+    }
+
     // 获取VIP
     getVip();
 
@@ -755,22 +896,23 @@ onMounted(() => {
     audio.addEventListener('pause', () => {
         playing.value = false;
         console.log('[PlayerControl] 暂停事件');
-        if (isElectron()) {
-            window.electron.ipcRenderer.send('play-pause-action', playing.value, audio.currentTime);
-        }
+        if (isElectron()) window.electron.ipcRenderer.send('play-pause-action', playing.value, audio.currentTime);
     });
 
     audio.addEventListener('play', () => {
         playing.value = true;
         console.log('[PlayerControl] 播放事件');
-        if (isElectron()) {
-            window.electron.ipcRenderer.send('play-pause-action', playing.value, audio.currentTime);
-        }
+        if (!lyricsData.value.length) getCurrentLyrics();
+        if (isElectron()) window.electron.ipcRenderer.send('play-pause-action', playing.value, audio.currentTime);
     });
 
     audio.addEventListener('error', (e) => {
         console.error('[PlayerControl] 音频错误:', e);
-        window.$modal.alert(t('yin-pin-jia-zai-shi-bai'));
+        if(audio.error?.code == 4){
+            addSongToQueue(currentSong.value.hash, currentSong.value.name, currentSong.value.img, currentSong.value.author);
+        }else{
+            window.$modal.alert(t('yin-pin-jia-zai-shi-bai'));
+        }
     });
 
     console.log('[PlayerControl] 音频初始化完成');
@@ -778,6 +920,9 @@ onMounted(() => {
 
 // 组件卸载清理
 onUnmounted(() => {
+    // 清除自动切换定时器
+    clearAutoSwitchTimer();
+
     // 使用AudioController的销毁方法清理基本监听器
     audioController.destroy();
 
@@ -805,17 +950,65 @@ onUnmounted(() => {
 // 对外暴露接口
 defineExpose({
     addSongToQueue: async (hash, name, img, author) => {
+        clearAutoSwitchTimer();
+
         console.log('[PlayerControl] 外部调用addSongToQueue:', name);
+        audio.pause();
+        playing.value = false;
         const result = await addSongToQueue(hash, name, img, author);
         if (result && result.song) {
             await playSong(result.song);
         } else if (result && result.shouldPlayNext) {
-            console.log('[PlayerControl] 歌曲无法播放，3秒后自动切换到下一首');
-            setTimeout(() => {
-                playSongFromQueue('next');
-            }, 3000);
+            console.log('[PlayerControl] 歌曲无法播放');
+            handleAutoSwitch();
         }
         return result;
+    },
+    addLocalMusicToQueue: async (localSong) => {
+        clearAutoSwitchTimer();
+
+        console.log('[PlayerControl] 外部调用addLocalMusicToQueue:', localSong.name);
+        audio.pause();
+        playing.value = false;
+        
+        const result = await addLocalMusicToQueue(localSong);
+        if (result && result.song) {
+            await playSong(result.song);
+            console.log('[PlayerControl] 本地音乐播放成功:', localSong.name);
+            return { song: result.song };
+        } else {
+            console.error('[PlayerControl] 播放本地音乐失败');
+            return { error: true };
+        }
+    },
+    addLocalPlaylistToQueue: async (localSongs, append = false) => {
+        console.log('[PlayerControl] 外部调用addLocalPlaylistToQueue:', localSongs.length, '首歌曲');
+        
+        const queueSongs = await addLocalPlaylistToQueue(localSongs, append);
+        
+        // 如果不是追加模式，自动播放第一首
+        if (!append && queueSongs.length > 0) {
+            let songIndex = 0;
+            
+            // 如果是随机播放模式，则随机选择一首歌曲
+            if (currentPlaybackModeIndex.value == 0) {
+                songIndex = Math.floor(Math.random() * queueSongs.length);
+                console.log('[PlayerControl] 随机模式下添加本地歌单后随机播放:', queueSongs[songIndex].name);
+            } else {
+                console.log('[PlayerControl] 添加本地歌单后自动播放第一首:', queueSongs[0].name);
+            }
+            
+            clearAutoSwitchTimer();
+            audio.pause();
+            playing.value = false;
+            
+            const result = await addLocalMusicToQueue(queueSongs[songIndex]);
+            if (result && result.song) {
+                await playSong(result.song);
+            }
+        }
+        
+        return queueSongs;
     },
     getPlaylistAllSongs,
     addPlaylistToQueue: async (info, append = false) => {
@@ -831,7 +1024,8 @@ defineExpose({
             } else {
                 console.log('[PlayerControl] 添加歌单后自动播放第一首:', songs[0].name);
             }
-
+            audio.pause();
+            playing.value = false;
             // 播放选中的歌曲
             const result = await addSongToQueue(
                 songs[songIndex].hash,
@@ -847,16 +1041,18 @@ defineExpose({
         return songs;
     },
     addToNext,
-    addCloudMusicToQueue: async (hash, name, author, timeLength) => {
+    addCloudMusicToQueue: async (hash, name, author, timeLength, cover) => {
+        clearAutoSwitchTimer();
+
         console.log('[PlayerControl] 外部调用addCloudMusicToQueue:', name);
-        const result = await addCloudMusicToQueue(hash, name, author, timeLength);
+        audio.pause();
+        playing.value = false;
+        const result = await addCloudMusicToQueue(hash, name, author, timeLength, cover);
         if (result && result.song) {
             await playSong(result.song);
-        } else if (result && result.shouldPlayNext) {
-            console.log('[PlayerControl] 云盘歌曲无法播放，3秒后自动切换到下一首');
-            setTimeout(() => {
-                playSongFromQueue('next');
-            }, 3000);
+    } else if (result && result.shouldPlayNext) {
+        console.log('[PlayerControl] 云盘歌曲无法播放');
+        handleAutoSwitch();
         }
         return result;
     },
@@ -880,6 +1076,7 @@ defineExpose({
                 queueSongs[songIndex].name,
                 queueSongs[songIndex].author,
                 queueSongs[songIndex].timeLength,
+                queueSongs[songIndex].cover,
                 true
             );
             if (result && result.song) {
@@ -893,28 +1090,45 @@ defineExpose({
 
 // 从播放队列接收事件
 const onQueueSongAdd = async (hash, name, img, author) => {
+    clearAutoSwitchTimer();
+
     console.log('[PlayerControl] 从播放队列收到addSongToQueue事件:', name);
+    audio.pause();
+    playing.value = false;
     const result = await addSongToQueue(hash, name, img, author);
     if (result && result.song) {
         await playSong(result.song);
     } else if (result && result.shouldPlayNext) {
-        console.log('[PlayerControl] 歌曲无法播放，3秒后自动切换到下一首');
-        setTimeout(() => {
-            playSongFromQueue('next');
-        }, 3000);
+        console.log('[PlayerControl] 歌曲无法播放');
+        handleAutoSwitch();
     }
 };
 
-const onQueueCloudSongAdd = async (hash, name, author, timeLength) => {
+const onQueueCloudSongAdd = async (hash, name, author, timeLength, cover) => {
+    clearAutoSwitchTimer();
+
     console.log('[PlayerControl] 从播放队列收到addCloudMusicToQueue事件:', name);
-    const result = await addCloudMusicToQueue(hash, name, author, timeLength);
+    const result = await addCloudMusicToQueue(hash, name, author, timeLength, cover);
     if (result && result.song) {
         await playSong(result.song);
     } else if (result && result.shouldPlayNext) {
-        console.log('[PlayerControl] 云盘歌曲无法播放，3秒后自动切换到下一首');
-        setTimeout(() => {
-            playSongFromQueue('next');
-        }, 3000);
+        console.log('[PlayerControl] 云盘歌曲无法播放');
+        handleAutoSwitch();
+    }
+};
+
+const onQueueLocalSongAdd = async (item) => {
+    clearAutoSwitchTimer();
+    audio.pause();
+    playing.value = false;
+    
+    console.log('[PlayerControl] 从播放队列收到addLocalMusicToQueue事件:', item.name);
+    const result = await addLocalMusicToQueue(item);
+    if (result && result.song) {
+        await playSong(result.song);
+    } else if (result && result.shouldPlayNext) {
+        console.log('[PlayerControl] 本地音乐无法播放');
+        handleAutoSwitch();
     }
 };
 </script>

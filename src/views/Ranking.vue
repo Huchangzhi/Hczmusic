@@ -143,7 +143,7 @@ const playRankSongs = (songs) => {
             hash: song.deprecated.hash,
             author: song.author_name, 
             name: song.songname,
-            cover: song.trans_param.union_cover?.replace("{size}", 120),
+            cover: song.trans_param.union_cover?.replace("{size}", 120).replace('http://', 'https://'),
             timelen: song.deprecated.duration
         }))
         props.playerControl.addPlaylistToQueue(newTracks);

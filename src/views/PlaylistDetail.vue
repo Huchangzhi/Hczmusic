@@ -71,6 +71,18 @@
                             </ul>
                         </div>
                     </div>
+                    <!-- 歌手歌曲排序选择 -->
+                    <div v-if="isArtist" class="sort-selector">
+                        <button class="sort-btn" :class="{ 'active': artistSortType === 'hot' }" @click="changeArtistSort('hot')">
+                            热门
+                        </button>
+                        <button class="sort-btn" :class="{ 'active': artistSortType === 'new' }" @click="changeArtistSort('new')">
+                            最新
+                        </button>
+                    </div>
+                    <button class="view-mode-btn" @click="toggleViewMode" :title="viewMode === 'list' ? '切换到网格视图' : '切换到列表视图'">
+                        <i class="fas" :class="viewMode === 'list' ? 'fa-th' : 'fa-list'"></i>
+                    </button>
                     <input type="text" v-model="searchQuery" @keyup.enter="searchTracks" :placeholder="t('sou-suo-ge-qu')" class="search-input" />
                 </div>
             </div>
@@ -95,16 +107,28 @@
                 </div>
             </div>
 
-            <RecycleScroller ref="recycleScrollerRef" :items="filteredTracks" :item-size="50" class="track-list" key-field="hash">
+            <RecycleScroller ref="recycleScrollerRef" :items="filteredTracks" :item-size="viewMode === 'list' ? 50 : 70" class="track-list" key-field="hash">
                 <template #default="{ item, index }">
-                    <div class="li" :key="item.hash"
+                    <div class="li" :key="item.hash" 
+                        :class="{ 'cover-view': viewMode === 'grid', 'selected': selectedTracks.includes(index) }"
                         @click="batchSelectionMode ? selectTrack(index, $event) : playSong(item.hash, item.name, item.cover, item.author)"
-                        @contextmenu.prevent="showContextMenu($event, item)"
-                        :class="{ 'selected': selectedTracks.includes(index) }">
+                        @contextmenu.prevent="showContextMenu($event, item)">
+                        
+                        <!-- 复选框或序号 -->
                         <div class="track-checkbox" v-if="batchSelectionMode">
                             <input type="checkbox" :checked="selectedTracks.includes(index)" @click.stop="selectTrack(index, $event)">
                         </div>
                         <div class="track-number" v-else>{{ index + 1 }}</div>
+
+                        <!-- 网格模式封面 -->
+                        <div class="track-cover" v-if="viewMode === 'grid'">
+                            <img :src="item.cover || './assets/images/ico.png'" alt="Cover">
+                            <div class="track-cover-overlay">
+                                <i :class="props.playerControl?.currentSong.hash == item.hash ? 'fas fa-music' : 'fas fa-play'"></i>
+                            </div>
+                        </div>
+
+                        <!-- 歌曲信息 -->
                         <div class="track-title" :title="item.name">{{ item.name }}
                             <span v-if="item.privilege == 10" class="icon vip-icon">VIP</span>
                             <span v-if="item.isHQ" class="icon sq-icon">HQ</span>
@@ -113,7 +137,8 @@
                         <div class="track-artist" :title="item.author">{{ item.author }}</div>
                         <div class="track-album" :title="item.album">{{ item.album }}</div>
                         <div class="track-timelen">
-                            <button v-if="props.playerControl?.currentSong.hash == item.hash" class="queue-play-btn fas fa-music"></button>
+                            <button v-if="props.playerControl?.currentSong.hash == item.hash && viewMode === 'list'" 
+                                class="queue-play-btn fas fa-music"></button>
                             {{ $formatMilliseconds(item.timelen) }}
                         </div>
                     </div>
@@ -144,11 +169,11 @@ import { ref, onMounted, watch, onBeforeUnmount, computed } from 'vue';
 import { RecycleScroller } from 'vue3-virtual-scroller';
 import ContextMenu from '../components/ContextMenu.vue';
 import PlaylistSelectModal from '../components/PlaylistSelectModal.vue';
-import { ElMessage } from 'element-plus';
 import { get } from '../utils/request';
 import { useRoute, useRouter } from 'vue-router';
 import { MoeAuthStore } from '../stores/store';
 import { useI18n } from 'vue-i18n';
+import { share } from '@/utils/utils';
 
 const playlistSelect = ref(null);
 const { t } = useI18n();
@@ -199,11 +224,15 @@ const songs = ref([]);
 // 排序状态
 const sortField = ref('');
 const sortOrder = ref('asc');
+const artistSortType = ref('hot'); // 歌手歌曲排序类型：hot(热门) 或 new(最新)
 
 // 判断是否全选
 const isAllSelected = computed(() => {
     return selectedTracks.value.length === filteredTracks.value.length && filteredTracks.value.length > 0;
 });
+
+// 视图模式相关状态
+const viewMode = ref('list'); // 'list' or 'grid'
 
 const props = defineProps({
     playerControl: Object
@@ -211,6 +240,10 @@ const props = defineProps({
 
 onMounted(() => {
     isFollowed.value = !!route.query.unfollow;
+    const savedViewMode = localStorage.getItem('trackViewMode');
+    if (savedViewMode) {
+        viewMode.value = savedViewMode;
+    }
     loadData();
     document.addEventListener('click', handleClickOutside);
 });
@@ -277,7 +310,7 @@ const fetchArtistSongs = async () => {
     try {
         const firstPageResponse = await get('/artist/audios', {
             id: route.query.singerid,
-            sort: 'hot',
+            sort: artistSortType.value,
             page: currentPage,
             pagesize: pageSize.value
         });
@@ -289,7 +322,7 @@ const fetchArtistSongs = async () => {
                 name: track.audio_name || '',
                 author: track.author_name || '',
                 album: track.album_name || '',
-                cover: track.trans_param.union_cover?.replace("{size}", 480) || '',
+                cover: track.trans_param.union_cover?.replace("{size}", 480).replace('http://', 'https://') || '',
                 timelen: track.timelength || 0,
                 isSQ: track.hash_flac !== '',
                 isHQ: track.hash_320 !== '',
@@ -312,7 +345,7 @@ const fetchArtistSongs = async () => {
         try {
             const response = await get('/artist/audios', {
                 id: route.query.singerid,
-                sort: 'hot',
+                sort: artistSortType.value,
                 page: currentPage,
                 pagesize: pageSize.value
             });
@@ -325,7 +358,7 @@ const fetchArtistSongs = async () => {
                         name: track.audio_name || '',
                         author: track.author_name || '',
                         album: track.album_name || '',
-                        cover: track.trans_param.union_cover?.replace("{size}", 480) || '',
+                        cover: track.trans_param.union_cover?.replace("{size}", 480).replace('http://', 'https://') || '',
                         timelen: track.timelength || 0,
                         isSQ: track.hash_flac !== '',
                         isHQ: track.hash_320 !== '',
@@ -372,7 +405,7 @@ const fetchPlaylistTracks = async () => {
                     name: nameParts.length > 1 ? nameParts[1] : track.name,
                     author: nameParts.length > 1 ? nameParts[0] : '',
                     album: track.albuminfo?.name || '',
-                    cover: track.cover?.replace("{size}", 480) || '',
+                    cover: track.cover?.replace("{size}", 480).replace('http://', 'https://') || '',
                     timelen: track.timelen || 0,
                     isSQ: track.relate_goods && track.relate_goods.length > 2,
                     isHQ: track.relate_goods && track.relate_goods.length > 1,
@@ -410,7 +443,7 @@ const fetchPlaylistTracks = async () => {
                             name: nameParts.length > 1 ? nameParts[1] : track.name,
                             author: nameParts.length > 1 ? nameParts[0] : '',
                             album: track.albuminfo?.name || '',
-                            cover: track.cover?.replace("{size}", 480) || '',
+                            cover: track.cover?.replace("{size}", 480).replace('http://', 'https://') || '',
                             timelen: track.timelen || 0,
                             isSQ: track.relate_goods && track.relate_goods.length > 2,
                             isHQ: track.relate_goods && track.relate_goods.length > 1,
@@ -509,7 +542,7 @@ const toggleFavorite = async (id) => {
                 );
                 localStorage.setItem('collectedPlaylists', JSON.stringify(newCollectedPlaylists));
                 isPlaylistFavorited.value = false;
-                ElMessage.success('取消收藏成功');
+                $message.success('取消收藏成功');
             }
         } else {
             const response = await get('/playlist/add', { 
@@ -527,12 +560,12 @@ const toggleFavorite = async (id) => {
                 currentPlaylists.push(newPlaylist);
                 localStorage.setItem('collectedPlaylists', JSON.stringify(currentPlaylists));
                 isPlaylistFavorited.value = true;
-                ElMessage.success('收藏成功');
+                $message.success('收藏成功');
             }
         }
         localStorage.setItem('t', Date.now());
     } catch (error) {
-        ElMessage.error(isPlaylistFavorited.value ? t('qu-xiao-shou-cang-shi-bai') : t('shou-cang-shi-bai'));
+        $message.error(isPlaylistFavorited.value ? t('qu-xiao-shou-cang-shi-bai') : t('shou-cang-shi-bai'));
     }
 };
 
@@ -550,8 +583,7 @@ const deletePlaylist = async () => {
 // 分享歌单
 const sharePlaylist = () => {
     isDropdownVisible.value = false;
-    navigator.clipboard.writeText(route.query.global_collection_id);
-    window.$modal.alert(t('yi-fu-zhi-fen-xiang-ma-qing-zai-moekoe-ke-hu-duan-zhong-fang-wen'));
+    share('share?listid='+route.query.global_collection_id);
 };
 
 // 右键菜单
@@ -563,7 +595,7 @@ const showContextMenu = (event, song) => {
             fileid: song.originalData.fileid,
             userid: isArtist.value ? null : detail.value.list_create_userid,
             timeLength: song.timelen,
-            cover: song.cover,
+            cover: song.cover.replace('http://', 'https://'),
         }, isArtist.value ? null : detail.value.listid);
     }
 };
@@ -640,21 +672,13 @@ const selectTrack = (index, event) => {
                 selectedTracks.value.push(i);
             }
         }
-    } else if (event.ctrlKey || event.metaKey) {
-        // Ctrl/Cmd 键选择性多选
+    } else {
+        // 普通点击
         const existingIndex = selectedTracks.value.indexOf(index);
         if (existingIndex === -1) {
             selectedTracks.value.push(index);
         } else {
             selectedTracks.value.splice(existingIndex, 1);
-        }
-    } else {
-        // 普通点击
-        const existingIndex = selectedTracks.value.indexOf(index);
-        if (existingIndex === -1) {
-            selectedTracks.value = [index];
-        } else {
-            selectedTracks.value = [];
         }
     }
     
@@ -666,7 +690,7 @@ const appendSelectedToQueue = async () => {
     if (selectedTracks.value.length === 0) return;
     const selectedSongs = selectedTracks.value.map(index => filteredTracks.value[index]);
     await props.playerControl.addPlaylistToQueue(selectedSongs, true);
-    ElMessage.success('添加到播放列表成功');
+    $message.success('添加到播放列表成功');
     isBatchMenuVisible.value = false;
 };
 
@@ -699,9 +723,9 @@ const removeSelectedFromPlaylist = async () => {
             });
             filteredTracks.value = tracks.value;
             selectedTracks.value = [];
-            ElMessage.success('歌曲已从歌单中移除');
+            $message.success('歌曲已从歌单中移除');
         } catch (err) {
-            ElMessage.error('移除歌曲失败');
+            $message.error('移除歌曲失败');
             return;
         }
     }
@@ -759,6 +783,21 @@ const getSortIconClass = (field) => {
 const handleSongRemoved = (fileid) => {
     tracks.value = tracks.value.filter(track => track.originalData?.fileid !== fileid);
     filteredTracks.value = filteredTracks.value.filter(track => track.originalData?.fileid !== fileid);
+};
+
+// 切换视图模式
+const toggleViewMode = () => {
+    viewMode.value = viewMode.value === 'list' ? 'grid' : 'list';
+    localStorage.setItem('trackViewMode', viewMode.value);
+};
+
+// 切换歌手歌曲排序方式
+const changeArtistSort = (sortType) => {
+    if (artistSortType.value !== sortType) {
+        artistSortType.value = sortType;
+        // 重新获取歌手歌曲
+        fetchArtistSongs();
+    }
 };
 </script>
 
@@ -924,6 +963,30 @@ const handleSongRemoved = (fileid) => {
     color: white;
 }
 
+/* 视图模式切换按钮 */
+.view-mode-btn {
+    background-color: transparent;
+    border: 1px solid var(--secondary-color);
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    width: 36px;
+    height: 31px;
+    transition: all 0.3s ease;
+}
+
+.view-mode-btn:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+}
+
+.view-mode-btn i {
+    font-size: 16px;
+}
+
 .selected-count {
     position: absolute;
     top: -8px;
@@ -975,6 +1038,37 @@ const handleSongRemoved = (fileid) => {
 
 .batch-actions-menu li:hover {
     background-color: #f0f0f0;
+}
+
+/* 排序选择器样式 */
+.sort-selector {
+    display: flex;
+    border: 1px solid var(--secondary-color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.sort-btn {
+    background-color: transparent;
+    border: none;
+    padding: 5px 15px;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.sort-btn:not(:last-child) {
+    border-right: 1px solid var(--secondary-color);
+}
+
+.sort-btn:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+}
+
+.sort-btn.active {
+    background-color: var(--primary-color);
+    color: white;
 }
 
 .search-input {
@@ -1255,5 +1349,105 @@ const handleSongRemoved = (fileid) => {
 
 .track-list-header-row:hover {
     background-color: rgba(var(--primary-color-rgb), 0.15);
+}
+
+/* 网格视图样式 */
+.li.cover-view {
+    height: 60px;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    border-radius: 5px;
+}
+
+.li.cover-view:hover {
+    background-color: var(--background-color);
+}
+
+.track-cover {
+    position: relative;
+    width: 50px;
+    height: 50px;
+    margin-right: 15px;
+    overflow: hidden;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.track-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.li.cover-view:hover .track-cover img {
+    transform: scale(1.05);
+}
+
+.track-cover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+.li.cover-view:hover .track-cover-overlay {
+    opacity: 1;
+}
+
+.track-list {
+    height: 800px;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent; 
+    overflow: auto;
+}
+
+/* 调整封面视图下的其他元素样式 */
+.li.cover-view .track-title {
+    flex: 2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.li.cover-view .track-artist {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 10px;
+}
+
+.li.cover-view .track-album {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 10px;
+}
+
+.li.cover-view .track-timelen {
+    width: 95px;
+    text-align: right;
+}
+
+.li.cover-view .track-checkbox,
+.li.cover-view .track-number {
+    margin-right: 10px;
+    width: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 </style>

@@ -107,10 +107,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, onUpdated } from "vue";
 import { get } from '../utils/request';
 import ContextMenu from '../components/ContextMenu.vue';
+import { useRoute,useRouter } from 'vue-router';
+import { getCover } from '../utils/utils';
 
+const router = useRouter();
+const route = useRoute();
 const songs = ref([]);
 const special_list = ref([]);
 const isLoading = ref(true);
@@ -123,7 +127,7 @@ const showContextMenu = (event, song) => {
         contextMenuRef.value.openContextMenu(event, {
             OriSongName: song.filename,
             FileHash: song.hash,
-            cover: song.sizable_cover?.replace("{size}", 480) || './assets/images/ico.png',
+            cover: song.sizable_cover?.replace("{size}", 480).replace('http://', 'https://') || './assets/images/ico.png',
             timeLength: song.time_length
         });
     }
@@ -195,7 +199,7 @@ const playFM = async (event) => {
                 return {
                     hash: song.hash,
                     name: song.songname,
-                    cover: song.sizable_cover?.replace("{size}", 480),
+                    cover: song.sizable_cover?.replace("{size}", 480).replace('http://', 'https://'),
                     author: song.author_name,
                     timelen: song.time_length
                 }
@@ -212,10 +216,29 @@ onMounted(() => {
     playlist();
 });
 
+onUpdated(() => {
+    if(!window.electron){
+        if(route.query.hash){
+            privilegeSong(route.query.hash).then(res=>{
+                if(res.status==1){
+                    const songInfo = res.data[0];
+                    playSong(songInfo.hash,songInfo.albumname,getCover(songInfo.info.image, 480),songInfo.singername)
+                    router.push('/');
+                }
+            })
+        }else if(route.query.listid){
+            router.push({
+                path: '/PlaylistDetail',
+                query: { global_collection_id: route.query.listid }
+            });
+        }
+    }
+})
+
 const recommend = async () => {
     const response = await get('/everyday/recommend');
     if (response.status == 1) {
-        songs.value = response.data.song_list;
+        songs.value = response.data.song_list.sort(() => Math.random() - 0.5);
     }
     isLoading.value = false;
 }
@@ -227,11 +250,15 @@ const playlist = async () => {
     }
 }
 
+const privilegeSong = async (hash) => {
+    const response = await get(`/privilege/lite`,{hash:hash});
+    return response;
+}
 const addAllSongsToQueue = () => {
     props.playerControl.addPlaylistToQueue(songs.value.map(song => ({
         hash: song.hash,
         name: song.ori_audio_name,
-        cover: song.sizable_cover?.replace("{size}", 480),
+        cover: song.sizable_cover?.replace("{size}", 480).replace('http://', 'https://'),
         author: song.author_name,
         timelen: song.time_length
     })));

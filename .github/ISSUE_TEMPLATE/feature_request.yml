@@ -13,6 +13,7 @@ body:
         
         - 搜索现有的issues和讨论，确保这个特性尚未被提出
         - 确认这是一个新特性而不是bug修复
+        - 有完整的上下文链，帮助我们评估是否是值得添加的特性
   - type: textarea
     id: problem-description
     attributes:

@@ -10,6 +10,7 @@ import Search from '@/views/Search.vue';
 import Lyrics from '@/views/Lyrics.vue';
 import Ranking from '@/views/Ranking.vue';
 import CloudDrive from '@/views/CloudDrive.vue';
+import LocalMusic from '@/views/LocalMusic.vue';
 import { MoeAuthStore } from '@/stores/store';
 
 
@@ -19,6 +20,7 @@ const routes = [
         component: HomeLayout,
         children: [
             { path: '', name: 'Index', component: Home },
+            { path: '/share', name: 'Share', component: Home },
             { path: '/discover', name: 'Discover', component: Discover },
             { path: '/library', name: 'Library', component: Library, meta: { requiresAuth: true } },
             { path: '/login', name: 'Login', component: Login },
@@ -27,6 +29,7 @@ const routes = [
             { path: '/search', name: 'Search', component: Search },
             { path: '/ranking', name: 'Ranking', component: Ranking },
             { path: '/CloudDrive', name: 'CloudDrive', component: CloudDrive },
+            { path: '/LocalMusic', name: 'LocalMusic', component: LocalMusic },
         ],
     },
     { path: '/lyrics', name: 'Lyrics', component: Lyrics },

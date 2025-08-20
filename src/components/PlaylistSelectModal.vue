@@ -20,7 +20,6 @@
 <script setup>
 import { ref } from 'vue';
 import { get } from '../utils/request';
-import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { MoeAuthStore } from '../stores/store';
 
@@ -54,6 +53,10 @@ const validateUserAndSong = () => {
         window.$modal.alert('云盘音乐不支持添加到歌单');
         return false;
     }
+    if(props.currentSong.isLocal){
+        window.$modal.alert('本地音乐不支持添加到歌单');
+        return false;
+    }
     return true;
 };
 
@@ -63,7 +66,7 @@ const fetchPlaylists = async () => {
             pagesize: 100
         });
         if (playlistResponse.status !== 1) {
-            ElMessage.error(t('huo-qu-ge-dan-shi-bai'));
+            $message.error(t('huo-qu-ge-dan-shi-bai'));
             return;
         }
         playlists.value = playlistResponse.data.info.filter(
@@ -71,7 +74,7 @@ const fetchPlaylists = async () => {
         );
         isOpen.value = true;
     } catch (error) {
-        ElMessage.error(t('huo-qu-ge-dan-shi-bai'));
+        $message.error(t('huo-qu-ge-dan-shi-bai'));
         isOpen.value = false;
     }
 };
@@ -86,9 +89,9 @@ const addToPlaylist = async (listid, song) => {
     }
     try {
         await get(`/playlist/tracks/add?listid=${listid}&data=${song_data}`);
-        ElMessage.success(t('cheng-gong-tian-jia-dao-ge-dan'));
+        $message.success(t('cheng-gong-tian-jia-dao-ge-dan'));
     } catch (error) {
-        ElMessage.error(t('tian-jia-dao-ge-dan-shi-bai'));
+        $message.error(t('tian-jia-dao-ge-dan-shi-bai'));
     }
     isOpen.value = false;
 };

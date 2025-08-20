@@ -1,3 +1,5 @@
+import i18n from '@/utils/i18n';
+
 export const applyColorTheme = (theme) => {
     let colors;
     if (theme === 'blue') {
@@ -46,22 +48,22 @@ export const applyColorTheme = (theme) => {
 
 export const getCover = (coverUrl, size) => {
     if (!coverUrl) return './assets/images/ico.png';
-    return coverUrl.replace("{size}", size);
+    return coverUrl.replace("{size}", size).replace('http://', 'https://').replace('c1.kgimg.com', 'imge.kugou.com');
 };
 
 export const getQuality = (hashs, data) => {
     const savedConfig = JSON.parse(localStorage.getItem('settings'));
-    if(savedConfig?.quality === 'high'){
+    if (savedConfig?.quality === 'high') {
         if(hashs){
             return hashs[1]?.hash || hashs[0].hash;
         }
         return data['hash_320'] || data['hash_192'] || data['hash_128'] || data['hash'];
-    }else if(savedConfig?.quality === 'lossless'){
+    } else if (savedConfig?.quality === 'lossless') {
         if(hashs){
             return hashs[hashs.length - 1]?.hash || hashs[1]?.hash || hashs[0].hash;
         }
         return data['hash_flac'] || data['hash_ape'] || data['hash'];
-    }else if(savedConfig?.quality === 'hires'){
+    } else if (savedConfig?.quality === 'hires') {
         if(hashs){
             return hashs[hashs.length - 1]?.hash;
         }
@@ -117,3 +119,10 @@ export const openRegisterUrl = (registerUrl) => {
         window.open(registerUrl, '_blank');
     }
 };
+
+// 分享
+export const share = (linkUrl) => {
+    let encodeString = (window.electron?'moekoe://':window.location.host+'/#/')+linkUrl;
+    navigator.clipboard.writeText(encodeString);
+    $message.success(i18n.global.t('kou-ling-yi-fu-zhi,kuai-ba-ge-qu-fen-xiang-gei-peng-you-ba'));
+}

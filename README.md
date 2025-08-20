@@ -50,8 +50,8 @@
 ## 📢 Todo List
 - [ ] 📺 支持 MV 播放
 - [x] 🌚 Light/Dark Mode 自动切换
-- [ ] 👆 支持 Touch Bar
-- [ ] 🖥️ 支持 PWA，可在 Chrome/Edge 里点击地址栏右边的 ➕ 安装到电脑
+- [x] 👆 支持 Touch Bar
+- [x] 🖥️ 支持 PWA，可在 Chrome/Edge 里点击地址栏右边的 ➕ 安装到电脑
 - [ ] 🟥 支持 Last.fm Scrobble
 - [ ] 🎧 支持 Mpris
 - [x] ⌨️ 全局快捷键
@@ -64,7 +64,56 @@
 
 ## 📦️ 安装
 
+### 1. 客户端安装
+
 访问本项目的 [Releases](https://github.com/iAJue/MoeKoeMusic/releases) 页面下载安装包。
+
+### 2. WEB端安装（docker）
+
+* 注意：部署后请开放服务器对应端口才可使用，或者使用反向代理实现域名访问。
+
+    1. 方式一：快速启动（推荐）
+
+    ```
+    git clone https://github.com/iAJue/MoeKoeMusic.git
+    cd MoeKoeMusic
+    docker compose up -d &
+    ```
+
+    2. ~~方式二：使用docker-compose一键安装 （镜像暂未上传官方）~~
+    
+    ```
+    docker run -d --name MoeKoeMusic -p 8080:8080 iajue/moekoe-music:latest
+    ```
+
+    3. 方式三：宝塔容器编排
+
+    * 远程镜像，版本可能会落后于官方
+    
+    ```
+    version: '3.3'
+    
+    services:
+      moekoe-music:
+        # 镜像地址
+        image: registry.cn-wulanchabu.aliyuncs.com/youngxj/moekoe-music:latest
+        container_name: moekoe-music # 容器名
+        restart: unless-stopped # 自动重启
+        build:
+          context: .
+          dockerfile: Dockerfile
+        ports: # 端口映射
+          - "8080:8080"  # 前端服务
+          - "6521:6521"  # 接口服务
+    
+    ```
+    
+    复制内容上面的内容，粘贴到宝塔面板的容器编排里面，编排名称为MoeKoeMusic，点击部署即可。
+
+### 3. 一键部署
+[![使用 EdgeOne Pages 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?template=https://github.com/iAJue/moekoemusic&install-command=npm%20install&output-directory=dist&root-directory=.%2F&build-command=npm%20run%20build&env=VITE_APP_API_URL)
+
+需在环境变量(VITE_APP_API_URL)中填写自己的API地址
 
 ## ⚙️ 开发
 
@@ -166,6 +215,7 @@ npm run build
    ```
 #### 3. 打包 Linux 平台
    - 默认 AppImage 格式（适用于大多数 Linux 发行版）：
+
    ```
    npm run electron:build -- --linux
    ```
@@ -180,6 +230,11 @@ npm run build
    - rpm（适用于 Red Hat/Fedora 系列）：
    ```
    npm run electron:build -- --linux --target rpm
+   ```
+   - ARM64架构(ARM v8+): 
+   ```
+   npm run build:api:linux-aarch64 //编译API
+   npm run electron:build:linux-aarch64 //编译主程序
    ```
 
 #### 4. 打包所有平台

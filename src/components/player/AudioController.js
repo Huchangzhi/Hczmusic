@@ -5,6 +5,7 @@ export default function useAudioController({ onSongEnd, updateCurrentTime }) {
     const playing = ref(false);
     const isMuted = ref(false);
     const volume = ref(66);
+    const playbackRate = ref(1.0);
 
     // 初始化音频设置
     const initAudio = () => {
@@ -14,12 +15,19 @@ export default function useAudioController({ onSongEnd, updateCurrentTime }) {
         audio.volume = volume.value / 100;
         audio.muted = isMuted.value;
 
+        // 初始化播放速度
+        const savedSpeed = localStorage.getItem('player_speed');
+        if (savedSpeed !== null) {
+            playbackRate.value = parseFloat(savedSpeed);
+            audio.playbackRate = playbackRate.value;
+        }
+
         audio.addEventListener('ended', onSongEnd);
         audio.addEventListener('pause', handleAudioEvent);
         audio.addEventListener('play', handleAudioEvent);
         audio.addEventListener('timeupdate', updateCurrentTime);
 
-        console.log('[AudioController] 初始化完成，音量设置为:', audio.volume, 'volume值:', volume.value);
+        console.log('[AudioController] 初始化完成，音量设置为:', audio.volume, 'volume值:', volume.value, '播放速度:', audio.playbackRate);
     };
 
     // 处理播放/暂停事件
@@ -77,6 +85,14 @@ export default function useAudioController({ onSongEnd, updateCurrentTime }) {
         console.log(`[AudioController] 设置进度: time=${time}`);
     };
 
+    // 设置播放速度
+    const setPlaybackRate = (speed) => {
+        playbackRate.value = speed;
+        audio.playbackRate = speed;
+        localStorage.setItem('player_speed', speed);
+        console.log('[AudioController] 设置播放速度:', speed);
+    };
+
     // 销毁时清理
     const destroy = () => {
         console.log('[AudioController] 销毁音频控制器');
@@ -91,11 +107,13 @@ export default function useAudioController({ onSongEnd, updateCurrentTime }) {
         playing,
         isMuted,
         volume,
+        playbackRate,
         initAudio,
         togglePlayPause,
         toggleMute,
         changeVolume,
         setCurrentTime,
+        setPlaybackRate,
         destroy
     };
 } 

@@ -1,8 +1,9 @@
-import { app, ipcMain, globalShortcut, dialog, Notification, shell, session } from 'electron';
-import { 
-    createWindow, createTray, startApiServer, 
-    stopApiServer, registerShortcut, 
-    playStartupSound, createLyricsWindow, setThumbarButtons 
+import { app, ipcMain, globalShortcut, dialog, Notification, shell, session, powerSaveBlocker } from 'electron';
+import {
+    createWindow, createTray, createTouchBar, startApiServer,
+    stopApiServer, registerShortcut,
+    playStartupSound, createLyricsWindow, setThumbarButtons,
+    registerProtocolHandler, sendHashAfterLoad
 } from './appServices.js';
 import { setupAutoUpdater } from './updater.js';
 import apiService from './apiService.js';
@@ -11,21 +12,27 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 let mainWindow = null;
+let blockerId = null;
 const store = new Store();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
-  app.quit(); 
-  process.exit(0);
+    app.quit();
+    process.exit(0);
 } else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show(); 
-      mainWindow.focus(); 
-    }
-  });
+    let protocolHandler;
+    app.on('second-instance', (event, commandLine) => {
+        if (!protocolHandler) {
+            protocolHandler = registerProtocolHandler(null);
+        }
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show(); 
+            mainWindow.focus(); 
+        }
+        protocolHandler.handleProtocolArgv(commandLine);
+    });
 }
 
 app.on('ready', () => {
@@ -33,10 +40,13 @@ app.on('ready', () => {
         try {
             mainWindow = createWindow();
             createTray(mainWindow);
+            if (process.platform === "darwin" && store.get('settings')?.touchBar == 'on') createTouchBar(mainWindow);
             playStartupSound();
             registerShortcut();
             setupAutoUpdater(mainWindow);
             apiService.init(mainWindow);
+            registerProtocolHandler(mainWindow);
+            sendHashAfterLoad(mainWindow);
         } catch (error) {
             console.log('初始化应用时发生错误:', error);
             createTray(null);
@@ -71,13 +81,17 @@ app.on('ready', () => {
 });
 
 const settings = store.get('settings');
-if(settings?.gpuAcceleration === 'on'){
+if (settings?.gpuAcceleration === 'on') {
     app.disableHardwareAcceleration();
     app.commandLine.appendSwitch('enable-transparent-visuals');
     app.commandLine.appendSwitch('disable-gpu-compositing');
 }
 
-if(settings?.highDpi === 'on'){
+if (settings?.preventAppSuspension === 'on') {
+    blockerId = powerSaveBlocker.start('prevent-display-sleep');
+}
+
+if (settings?.highDpi === 'on') {
     app.commandLine.appendSwitch('high-dpi-support', '1');
     app.commandLine.appendSwitch('force-device-scale-factor', settings?.dpiScale || '1');
 }
@@ -91,6 +105,9 @@ app.on('before-quit', () => {
     if (mainWindow && !mainWindow.isMaximized()) {
         const windowBounds = mainWindow.getBounds();
         store.set('windowState', windowBounds);
+    }
+    if (blockerId !== null) {
+        powerSaveBlocker.stop(blockerId);
     }
     stopApiServer();
     apiService.stop();
@@ -128,10 +145,10 @@ ipcMain.on('disclaimer-response', (event, accepted) => {
 ipcMain.on('window-control', (event, action) => {
     switch (action) {
         case 'close':
-            if(store.get('settings')?.minimizeToTray === 'off'){
+            if (store.get('settings')?.minimizeToTray === 'off') {
                 app.isQuitting = true;
                 app.quit();
-            }else{
+            } else {
                 mainWindow.close();
             }
             break;
@@ -155,6 +172,12 @@ app.on('will-quit', () => {
 });
 ipcMain.on('save-settings', (event, settings) => {
     store.set('settings', settings);
+    if (['on', 'off'].includes(settings?.autoStart)) {
+        app.setLoginItemSettings({
+            openAtLogin: settings?.autoStart === 'on',
+            path: app.getPath('exe'),
+        });
+    }
 });
 ipcMain.on('clear-settings', (event) => {
     store.clear();
@@ -202,9 +225,7 @@ ipcMain.on('desktop-lyrics-action', (event, action) => {
             }
             break;
         case 'display-lyrics':
-            if(!mainWindow.lyricsWindow){
-                createLyricsWindow();
-            }
+            if (!mainWindow.lyricsWindow) createLyricsWindow();
             break;
     }
 });
@@ -223,7 +244,7 @@ ipcMain.on('window-drag', (event, { mouseX, mouseY }) => {
     store.set('lyricsWindowPosition', { x: mouseX, y: mouseY });
 })
 
-ipcMain.on('play-pause-action',(event, playing, currentTime) =>{
+ipcMain.on('play-pause-action', (event, playing, currentTime) => {
     const lyricsWindow = mainWindow.lyricsWindow;
     if (lyricsWindow) {
         lyricsWindow.webContents.send('playing-status', playing);

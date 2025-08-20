@@ -1,16 +1,41 @@
 <template>
     <div class="library-page">
         <div class="profile-section">
-            <img class="profile-pic" :src="user.pic" alt="{{ $t('yong-hu-tou-xiang') }}" />
-            <h2 class="section-title">{{ user.nickname }}<span>{{ $t('de-yin-le-ku') }}</span></h2>
-            <img v-if="userVip[0] && userVip[0].is_vip == 1" class="user-level"
-                :src="`./assets/images/${userVip[0].product_type === 'svip' ? 'vip' : 'vip2'}.png`"
-                :title="`${$t('gai-nian-ban')} ${userVip[0].vip_end_time}`" />
-            <img v-if="userVip[1] && userVip[1].is_vip == 1" class="user-level"
-                :src="`./assets/images/${userVip[1].product_type === 'svip' ? 'vip' : 'vip2'}.png`"
-                :title="`${$t('chang-ting-ban')} ${userVip[1].vip_end_time}`" />
-            <span class="sign-in" @click="signIn">签到</span>
-            <span class="sign-in" @click="getVip">VIP</span>
+            <div class="profile-header" :style="`background-image: url(${userDetail.bg_pic || './assets/images/banner.png'})`">
+                <div class="profile-info">
+                    <img class="profile-pic" :src="user.pic" :alt="$t('yong-hu-tou-xiang')" />
+                    <div class="user-details">
+                        <div class="user-name-row">
+                            <h2 class="user-name">{{ user.nickname }}</h2>
+                            <span class="user-level">Lv.{{ userDetail.p_grade || 0 }}</span>
+                            <img v-if="userVip[0] && userVip[0].is_vip == 1" class="user-vip-icon"
+                                :src="`./assets/images/${userVip[0].product_type === 'svip' ? 'vip' : 'vip2'}.png`"
+                                :title="`${$t('gai-nian-ban')} ${userVip[0].vip_end_time}`" />
+                            <img v-if="userVip[1] && userVip[1].is_vip == 1" class="user-vip-icon"
+                                :src="`./assets/images/${userVip[1].product_type === 'svip' ? 'vip' : 'vip2'}.png`"
+                                :title="`${$t('chang-ting-ban')} ${userVip[1].vip_end_time}`" />
+                        </div>
+                        <div class="user-signature">{{ userDetail.descri || '' }}</div>
+                        <div class="user-stats">
+                            <div class="stat-item"><span class="stat-value">{{ userDetail.follows || 0 }}</span><span class="stat-label">{{ $t('guan-zhu') }}</span></div>
+                            <div class="stat-item"><span class="stat-value">{{ userDetail.fans || 0 }}</span><span class="stat-label">{{ $t('fen-si') }}</span></div>
+                            <div class="stat-item"><span class="stat-value">{{ userDetail.friends || 0 }}</span><span class="stat-label">{{ $t('hao-you') }}</span></div>
+                            <div class="stat-item"><span class="stat-value">{{ userDetail.hvisitors || 0 }}</span><span class="stat-label">{{ $t('fang-wen') }}</span></div>
+                        </div>
+                        <div class="user-meta">
+                            <span class="user-gender">
+                                <i :class="userDetail.gender === 1 ? 'fas fa-mars' : 'fas fa-venus'"></i>
+                            </span>
+                            <span class="user-duration">{{ formatDuration(userDetail.duration || 0) }} {{ $t('ting-ge-shi-chang') }}</span>
+                            <span class="user-age">{{ formatRegTime(userDetail.rtime || 0) }}</span>
+                        </div>
+                        <div class="user-actions">
+                            <span class="action-button" @click="signIn">{{ $t('qian-dao') }}</span>
+                            <span class="action-button" @click="getVip">VIP</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <h2 class="section-title" style="margin-bottom: 0px;">{{ $t('wo-xi-huan-ting') }}</h2>
         <div class="favorite-section">
@@ -34,7 +59,12 @@
                         </div>
                     </li>
                 </ul>
-                <el-empty v-else :description="t('zhe-li-shi-mo-du-mei-you')" />
+                <div v-else class="empty-container">
+                    <div class="empty-image">
+                        <img src="/assets/images/empty.png" alt="暂无数据" />
+                    </div>
+                    <div class="empty-description">{{ t('zhe-li-shi-mo-du-mei-you') }}</div>
+                </div>
             </div>
         </div>
 
@@ -54,6 +84,13 @@
                     <div class="album-info">
                         <h3>我的云盘</h3>
                         <p>(*/ω＼*)</p>
+                    </div>
+                </div>
+                <div v-if="selectedCategory === 0 && !isLoading" class="music-card create-playlist-button" @click="goToLocalMusic">
+                    <img :src="`./assets/images/local-music.png`" class="album-image" />
+                    <div class="album-info">
+                        <h3>本地音乐</h3>
+                        <p>(〃'▽'〃)</p>
                     </div>
                 </div>
                 <div class="music-card"
@@ -89,13 +126,18 @@
                 </div>
             </div>
         </div>
-        <el-empty v-if="
+        <div v-if="
         (selectedCategory == 0 && userPlaylists.length === 0) || 
         (selectedCategory == 1 && collectedPlaylists.length === 0) || 
         (selectedCategory == 2 && collectedAlbums.length === 0) || 
         (selectedCategory == 3 && followedArtists.length === 0) || 
         (selectedCategory == 4 && collectedFriends.length === 0)"
-            :description="t('zhe-li-shi-mo-du-mei-you')" />
+            class="empty-container">
+            <div class="empty-image">
+                <img src="/assets/images/empty.png" alt="暂无数据" />
+            </div>
+            <div class="empty-description">{{ t('zhe-li-shi-mo-du-mei-you') }}</div>
+        </div>
     </div>
 </template>
 
@@ -116,12 +158,33 @@ const collectedFriends = ref([]); // 好友
 const followedArtists = ref([]); // 关注的歌手
 const listenHistory = ref([]); // 听歌历史
 const userVip = ref({});
+const userDetail = ref({}); // 新增：用户详细信息
 const categories = ref([t('wo-chuang-jian-de-ge-dan'), t('wo-shou-cang-de-ge-dan'), t('wo-shou-cang-de-zhuan-ji'), t('wo-guan-zhu-de-ge-shou'), t('wo-guan-zhu-de-hao-you')]);
 const selectedCategory = ref(0);
 const isLoading = ref(true); 
 const selectCategory = (index) => {
     selectedCategory.value = index;
     router.replace({ path: '/library', query: { category: index } });
+};
+
+// 格式化听歌时长（分钟转为小时和分钟）
+const formatDuration = (minutes) => {
+    if (!minutes) return '0';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+        return `${hours}${t('xiao-shi')} ${mins}${t('fen-zhong')}`;
+    }
+    return `${mins}${t('fen-zhong')}`;
+};
+
+// 格式化注册时间
+const formatRegTime = (timestamp) => {
+    if (!timestamp) return '';
+    const registerDate = new Date(timestamp * 1000);
+    const now = new Date();
+    const years = now.getFullYear() - registerDate.getFullYear();
+    return `${t('le-ling')} ${years} ${t('nian')}`;
 };
 
 const playSong = (hash, name, img, author) => {
@@ -140,6 +203,8 @@ onMounted(() => {
     }
 });
 const getUserDetails = () => {
+    // 获取用户详细信息
+    getUserDetail();
     // 获取用户听歌历史
     getlisten().finally(() => {
         isLoading.value = false; 
@@ -150,6 +215,19 @@ const getUserDetails = () => {
     getfollow()
     selectedCategory.value = parseInt(router.currentRoute.value.query.category || 0);
 }
+
+// 获取用户详细信息
+const getUserDetail = async () => {
+    try {
+        const detailResponse = await get('/user/detail');
+        if (detailResponse.status === 1) {
+            userDetail.value = detailResponse.data;
+        }
+    } catch (error) {
+        console.error('Failed to get user details:', error);
+    }
+}
+
 const getVipInfo = async () => {
     try {
         const VipInfoResponse = await get('/user/vip/detail');
@@ -190,19 +268,35 @@ const getplaylist = async () => {
             t: localStorage.getItem('t')
         });
         if (playlistResponse.status === 1) {
-            userPlaylists.value = playlistResponse.data.info.filter(playlist => {
+            const sortedInfo = playlistResponse.data.info.sort((a, b) => {
+                if (a.sort !== b.sort) {
+                    return a.sort - b.sort;
+                }
+                return 0;
+            });
+
+            userPlaylists.value = sortedInfo.filter(playlist => {
                 if (playlist.name == '我喜欢') {
                     localStorage.setItem('like', playlist.listid);
                 }
                 return playlist.list_create_userid === user.value.userid || playlist.name === '我喜欢';
             }).sort((a, b) => a.name === '我喜欢' ? -1 : 1);
-            collectedPlaylists.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid !== user.value.userid && !playlist.authors);
-            collectedAlbums.value = playlistResponse.data.info.filter(playlist => playlist.list_create_userid !== user.value.userid && playlist.authors);
+
+            collectedPlaylists.value = sortedInfo.filter(playlist => 
+                playlist.list_create_userid !== user.value.userid && !playlist.authors
+            );
+
+            collectedAlbums.value = sortedInfo.filter(playlist => 
+                playlist.list_create_userid !== user.value.userid && playlist.authors
+            );
             
             const collectedIds = [];
-            playlistResponse.data.info.forEach(playlist => {
+            sortedInfo.forEach(playlist => {
                 if (playlist.list_create_userid !== user.value.userid) {
-                    collectedIds.push({list_create_listid:playlist.list_create_listid, listid:playlist.listid});
+                    collectedIds.push({
+                        list_create_listid: playlist.list_create_listid, 
+                        listid: playlist.listid
+                    });
                 }
             });
             localStorage.setItem('collectedPlaylists', JSON.stringify(collectedIds));
@@ -228,6 +322,10 @@ const createPlaylist = async () => {
 
 const goToCloudDrive= () => {
     router.push('/CloudDrive');
+}
+
+const goToLocalMusic= () => {
+    router.push('/LocalMusic');
 }
 
 const goToArtistDetail = (artist) => {
@@ -296,11 +394,166 @@ const getVip = async () => {
     align-items: center;
 }
 
+.profile-header {
+    width: 100%;
+    height: 100%; 
+    background-size: cover;
+    background-position: center;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-end;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: visible;
+    transition: background-image 1s ease-in-out;
+}
+
+.profile-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.6) 100%);
+    border-radius: 15px;
+    z-index: 1;
+}
+
+.profile-info {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    z-index: 2;
+}
+
 .profile-pic {
     border-radius: 50%;
-    width: 100px;
-    height: 100px;
-    margin-right: 15px;
+    width: 90px;
+    height: 90px;
+    border: 3px solid white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    margin-bottom: 10px;
+    position: relative;
+    top: -20px;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    flex: 1;
+}
+
+.user-name-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.user-name {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.user-level {
+    font-size: 14px;
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: white;
+}
+
+.user-vip-icon {
+    height: 22px;
+    margin-left: 10px;
+}
+
+.user-signature {
+    font-size: 14px;
+    color: #eee;
+    margin-bottom: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+}
+
+.user-stats {
+    display: flex;
+    justify-content: flex-start;
+    gap: 20px;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #fff;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: bold;
+    display: inline-block;
+    margin-right: 3px;
+}
+
+.stat-label {
+    display: inline-block;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.user-meta {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 12px;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.user-gender i {
+    font-size: 16px;
+    color: #fff;
+}
+
+.user-duration,
+.user-age {
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 3px 8px;
+    border-radius: 10px;
+    color: white;
+}
+
+.user-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.action-button {
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 4px 10px;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: background-color 0.3s ease;
+}
+
+.action-button:hover {
+    background-color: rgba(255, 255, 255, 0.3);
 }
 
 .favorite-section {
@@ -509,5 +762,34 @@ const getVip = async () => {
     position: absolute;
     top: 32%;
     left: 29%;
+}
+
+/* 空状态容器样式 */
+.empty-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+    width: 100%;
+}
+
+.empty-image {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.empty-image img {
+    width: 200px;
+    height: 200px;
+    opacity: 0.6;
+}
+
+.empty-description {
+    color: #909399;
+    font-size: 14px;
+    text-align: center;
+    margin-left: 60px;
 }
 </style>
