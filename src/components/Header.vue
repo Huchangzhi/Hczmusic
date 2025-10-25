@@ -197,9 +197,17 @@ onUnmounted(() => {
 });
 
 const handleClickOutside = (event) => {
-    const queueProfile = document.querySelector('.profile-menu');
-    if (queueProfile && !queueProfile.contains(event.target) && !event.target.closest('.profile')) {
+    const profileMenu = document.querySelector('.profile-menu');
+    const localPanel = document.querySelector('.local-mode-panel');
+    
+    // 如果点击的是本地模式面板或其内部元素，则不关闭主菜单
+    if (localPanel && localPanel.contains(event.target)) {
+        return;
+    }
+    
+    if (profileMenu && !profileMenu.contains(event.target) && !event.target.closest('.profile')) {
         showProfile.value = false;
+        showLocalModePanel.value = false; // 同时关闭本地模式面板
     }
 };
 
@@ -246,18 +254,22 @@ onMounted(() => {
     }
     
     // 添加点击事件监听，用于关闭面板
+    document.addEventListener('click', handleClickOutside);
     document.addEventListener('click', handleClickOutsideLocalPanel);
 });
 
 onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
     document.removeEventListener('click', handleClickOutsideLocalPanel);
 });
 
 // 打开本地模式面板
 const openLocalModePanel = (event) => {
-    event.stopPropagation(); // 阻止事件冒泡，防止关闭面板
-    showLocalModePanel.value = !showLocalModePanel.value;
-    // 如果打开了本地模式面板，确保主菜单不关闭
+    if (event && event.stopPropagation) {
+        event.stopPropagation(); // 阻止事件冒泡，防止关闭面板
+    }
+    showLocalModePanel.value = true;  // 直接设置为 true，打开面板
+    // 同时也要确保主菜单是打开的
     showProfile.value = true;
 };
 
