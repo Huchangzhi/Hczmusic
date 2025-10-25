@@ -193,5 +193,7 @@
   "qie-huan-bo-fang-mo-shi": "Switch playback mode",
   "pwa-app": "PWA Application",
   "install": "Install",
-  "yin-pin-jia-zai-shi-bai": "Music loading failed"
+  "yin-pin-jia-zai-shi-bai": "Music loading failed",
+  "ben-di-mo-shi-kai": "Local Mode On",
+  "ben-di-mo-shi-guan": "Local Mode Off"
 }

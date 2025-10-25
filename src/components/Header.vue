@@ -49,6 +49,11 @@
                                     <i class="fas fa-info-circle"></i> {{ $t('guan-yu') }}
                                 </a>
                             </li>
+                            <li>
+                                <a @click="toggleLocalMode()">
+                                    <i class="fas fa-plug"></i> {{ isLocalMode ? $t('ben-di-mo-shi-guan') : $t('ben-di-mo-shi-kai') }}
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </div>
@@ -80,6 +85,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { MoeAuthStore } from '../stores/store';
 import { openRegisterUrl } from '../utils/utils';
 import { useI18n } from 'vue-i18n';
+import { updateBaseURL } from '../utils/request';
 const MoeAuth = MoeAuthStore();
 const searchQuery = ref('');
 const isDisclaimerVisible = ref(false);
@@ -198,6 +204,68 @@ const isVersionLower = (current, latest) => {
         }
     }
     return false;
+};
+
+// 本地模式相关
+const isLocalMode = ref(false);
+const originalApiUrl = import.meta.env.VITE_APP_API_URL || 'http://127.0.0.1:6521';
+const localApiUrl = 'http://127.0.0.1:6521';
+
+// 检查当前是否为本地模式
+onMounted(() => {
+    const savedLocalMode = localStorage.getItem('localMode');
+    if (savedLocalMode === 'true') {
+        enableLocalMode();
+    } else {
+        isLocalMode.value = false;
+    }
+});
+
+// 切换本地模式
+const toggleLocalMode = async () => {
+    if (!isLocalMode.value) {
+        const result = await window.$modal.confirm(
+            '启用本地模式将切换API地址为http://127.0.0.1:6521，适用于公共服务器掉线或卡顿时使用。' +
+            '您需要先下载服务端，点击确定将跳转到下载页面。'
+        );
+        if (result) {
+            // 打开下载链接
+            openRegisterUrl('https://gitee.com/huchangzhi/hmusic/releases/download/v1.0/app_win.exe');
+            enableLocalMode();
+        }
+    } else {
+        const result = await window.$modal.confirm('确定要关闭本地模式吗？');
+        if (result) {
+            disableLocalMode();
+        }
+    }
+};
+
+// 启用本地模式
+const enableLocalMode = () => {
+    // 更新环境变量和请求配置
+    import.meta.env.VITE_APP_API_URL = localApiUrl;
+    // 更新axios配置的baseURL
+    updateAxiosBaseURL(localApiUrl);
+    isLocalMode.value = true;
+    localStorage.setItem('localMode', 'true');
+    $message.success('已切换到本地模式');
+};
+
+// 禁用本地模式
+const disableLocalMode = () => {
+    // 更新环境变量和请求配置
+    import.meta.env.VITE_APP_API_URL = originalApiUrl;
+    // 更新axios配置的baseURL
+    updateAxiosBaseURL(originalApiUrl);
+    isLocalMode.value = false;
+    localStorage.setItem('localMode', 'false');
+    $message.success('已切换到在线模式');
+};
+
+// 更新axios请求实例的baseURL
+const updateAxiosBaseURL = (newBaseUrl) => {
+    updateBaseURL(newBaseUrl);
 };
 </script>
 <style scoped>

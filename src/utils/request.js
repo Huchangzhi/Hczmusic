@@ -2,15 +2,31 @@
 import axios from 'axios';
 import { MoeAuthStore } from '../stores/store';
 
+// 获取当前的baseURL
+const getCurrentBaseURL = () => {
+    // 检查localStorage是否设置了本地模式
+    const localMode = localStorage.getItem('localMode');
+    if (localMode === 'true') {
+        return 'http://127.0.0.1:6521';
+    }
+    // 返回环境变量或默认值
+    return import.meta.env.VITE_APP_API_URL || 'http://127.0.0.1:6521';
+};
+
 // 创建一个 axios 实例
 const httpClient = axios.create({
-    baseURL: import.meta.env.VITE_APP_API_URL || 'http://127.0.0.1:6521',
+    baseURL: getCurrentBaseURL(),
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
     },
     withCredentials: true,
 });
+
+// 导出函数用于动态更新baseURL
+export const updateBaseURL = (newBaseURL) => {
+    httpClient.defaults.baseURL = newBaseURL;
+};
 
 // 请求拦截器
 httpClient.interceptors.request.use(
