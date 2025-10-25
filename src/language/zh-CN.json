@@ -218,5 +218,7 @@
   "ben-di-mo-shi": "本地模式",
   "ben-di-mo-shi-shuo-ming": "用于公共服务器掉线或卡顿时使用",
   "xia-zai-fu-wu-duan": "下载服务端",
-  "fu-wu-duan-xia-zai-zhong": "服务端下载中..."
+  "fu-wu-duan-xia-zai-zhong": "服务端下载中...",
+  "yi-qie-huan-dao-ben-di-mo-shi": "已切换到本地模式",
+  "yi-qie-huan-dao-zai-xian-mo-shi": "已切换到在线模式"
 }

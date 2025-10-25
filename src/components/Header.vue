@@ -254,14 +254,20 @@ onUnmounted(() => {
 });
 
 // 打开本地模式面板
-const openLocalModePanel = () => {
+const openLocalModePanel = (event) => {
+    event.stopPropagation(); // 阻止事件冒泡，防止关闭面板
     showLocalModePanel.value = !showLocalModePanel.value;
+    // 如果打开了本地模式面板，确保主菜单不关闭
+    showProfile.value = true;
 };
 
 // 外部点击处理 - 用于关闭本地模式面板
 const handleClickOutsideLocalPanel = (event) => {
     const localPanel = document.querySelector('.local-mode-panel');
-    if (localPanel && !localPanel.contains(event.target) && !event.target.closest('.profile')) {
+    const profileElement = document.querySelector('.profile');
+    
+    if (localPanel && !localPanel.contains(event.target) && 
+        (!profileElement || !profileElement.contains(event.target))) {
         showLocalModePanel.value = false;
     }
 };
@@ -274,24 +280,20 @@ const downloadLocalServer = () => {
 
 // 启用本地模式
 const enableLocalMode = () => {
-    // 更新环境变量和请求配置
-    import.meta.env.VITE_APP_API_URL = localApiUrl;
     // 更新axios配置的baseURL
     updateAxiosBaseURL(localApiUrl);
     isLocalMode.value = true;
     localStorage.setItem('localMode', 'true');
-    $message.success('已切换到本地模式');
+    $message.success($t('yi-qie-huan-dao-ben-di-mo-shi'));
 };
 
 // 禁用本地模式
 const disableLocalMode = () => {
-    // 更新环境变量和请求配置
-    import.meta.env.VITE_APP_API_URL = originalApiUrl;
     // 更新axios配置的baseURL
     updateAxiosBaseURL(originalApiUrl);
     isLocalMode.value = false;
     localStorage.setItem('localMode', 'false');
-    $message.success('已切换到在线模式');
+    $message.success($t('yi-qie-huan-dao-zai-xian-mo-shi'));
 };
 
 // 更新axios请求实例的baseURL
