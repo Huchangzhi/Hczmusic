@@ -270,7 +270,7 @@ const closeLocalModeWindow = () => {
 // 下载本地服务器
 const downloadLocalServer = () => {
     openRegisterUrl('https://gitee.com/huchangzhi/hmusic/releases/download/v1.0/app_win.exe');
-    $message.info($t('fu-wu-duan-xia-zai-zhong'));
+    $message.info(t('fu-wu-duan-xia-zai-zhong'));
 };
 
 // 启用本地模式
@@ -279,7 +279,7 @@ const enableLocalMode = () => {
     updateAxiosBaseURL(localApiUrl);
     isLocalMode.value = true;
     localStorage.setItem('localMode', 'true');
-    $message.success($t('yi-qie-huan-dao-ben-di-mo-shi'));
+    $message.success(t('yi-qie-huan-dao-ben-di-mo-shi'));
     showLocalModeWindow.value = false; // 启用后关闭窗口
 };
 
@@ -289,7 +289,7 @@ const disableLocalMode = () => {
     updateAxiosBaseURL(originalApiUrl);
     isLocalMode.value = false;
     localStorage.setItem('localMode', 'false');
-    $message.success($t('yi-qie-huan-dao-zai-xian-mo-shi'));
+    $message.success(t('yi-qie-huan-dao-zai-xian-mo-shi'));
     showLocalModeWindow.value = false; // 禁用后关闭窗口
 };
 
