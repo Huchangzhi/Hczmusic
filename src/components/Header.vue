@@ -50,37 +50,42 @@
                                 </a>
                             </li>
                             <li>
-                                <a @click="openLocalModePanel()">
+                                <a @click="toggleLocalModeMenu()">
                                     <i class="fas fa-plug"></i> {{ $t('ben-di-mo-shi') }}
                                 </a>
                             </li>
                         </ul>
                     </div>
                 </div>
-                
-                <!-- 本地模式面板 -->
-                <div v-if="showLocalModePanel" class="local-mode-panel" @click.stop>
-                    <div class="panel-header">
-                        <h3>{{ $t('ben-di-mo-shi') }}</h3>
-                        <button class="close-btn" @click="showLocalModePanel = false">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="panel-content">
-                        <p>{{ $t('ben-di-mo-shi-shuo-ming') }}</p>
-                        <div class="panel-buttons">
-                            <button @click="enableLocalMode" class="btn-primary" :disabled="isLocalMode">
-                                {{ $t('da-kai') }}
-                            </button>
-                            <button @click="disableLocalMode" class="btn-secondary" :disabled="!isLocalMode">
-                                {{ $t('guan-bi') }}
-                            </button>
-                            <button @click="downloadLocalServer" class="btn-download">
-                                {{ $t('xia-zai-fu-wu-duan') }}
-                            </button>
-                        </div>
-                    </div>
+            </div>
+        </nav>
+    </header>
+    
+    <!-- 本地模式模态窗口 -->
+    <div v-if="showLocalModeWindow" class="local-mode-window-overlay" @click="closeLocalModeWindow()">
+        <div class="local-mode-window" @click.stop>
+            <div class="window-header">
+                <h3>{{ $t('ben-di-mo-shi') }}</h3>
+                <button class="close-btn" @click="closeLocalModeWindow()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="window-content">
+                <p>{{ $t('ben-di-mo-shi-shuo-ming') }}</p>
+                <div class="window-buttons">
+                    <button @click="enableLocalMode" class="btn-primary" :class="{ disabled: isLocalMode }" :disabled="isLocalMode">
+                        {{ $t('da-kai') }}
+                    </button>
+                    <button @click="disableLocalMode" class="btn-secondary" :class="{ disabled: !isLocalMode }" :disabled="!isLocalMode">
+                        {{ $t('guan-bi') }}
+                    </button>
+                    <button @click="downloadLocalServer" class="btn-download">
+                        {{ $t('xia-zai-fu-wu-duan') }}
+                    </button>
                 </div>
+            </div>
+        </div>
+    </div>
             </div>
         </nav>
     </header>
@@ -240,7 +245,7 @@ const isVersionLower = (current, latest) => {
 
 // 本地模式相关
 const isLocalMode = ref(false);
-const showLocalModePanel = ref(false);
+const showLocalModeWindow = ref(false);
 const originalApiUrl = import.meta.env.VITE_APP_API_URL || 'http://127.0.0.1:6521';
 const localApiUrl = 'http://127.0.0.1:6521';
 
@@ -248,41 +253,13 @@ const localApiUrl = 'http://127.0.0.1:6521';
 onMounted(() => {
     const savedLocalMode = localStorage.getItem('localMode');
     if (savedLocalMode === 'true') {
-        enableLocalMode();
+        isLocalMode.value = true;  // 只设置状态，不调用函数以避免循环调用
+        // 更新axios基本URL
+        updateAxiosBaseURL(localApiUrl);
     } else {
         isLocalMode.value = false;
     }
-    
-    // 添加点击事件监听，用于关闭面板
-    document.addEventListener('click', handleClickOutside);
-    document.addEventListener('click', handleClickOutsideLocalPanel);
 });
-
-onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
-    document.removeEventListener('click', handleClickOutsideLocalPanel);
-});
-
-// 打开本地模式面板
-const openLocalModePanel = (event) => {
-    if (event && event.stopPropagation) {
-        event.stopPropagation(); // 阻止事件冒泡，防止关闭面板
-    }
-    showLocalModePanel.value = true;  // 直接设置为 true，打开面板
-    // 同时也要确保主菜单是打开的
-    showProfile.value = true;
-};
-
-// 外部点击处理 - 用于关闭本地模式面板
-const handleClickOutsideLocalPanel = (event) => {
-    const localPanel = document.querySelector('.local-mode-panel');
-    const profileElement = document.querySelector('.profile');
-    
-    if (localPanel && !localPanel.contains(event.target) && 
-        (!profileElement || !profileElement.contains(event.target))) {
-        showLocalModePanel.value = false;
-    }
-};
 
 // 下载本地服务器
 const downloadLocalServer = () => {
@@ -297,6 +274,7 @@ const enableLocalMode = () => {
     isLocalMode.value = true;
     localStorage.setItem('localMode', 'true');
     $message.success($t('yi-qie-huan-dao-ben-di-mo-shi'));
+    showLocalModeWindow.value = false; // 启用后关闭窗口
 };
 
 // 禁用本地模式
@@ -306,20 +284,12 @@ const disableLocalMode = () => {
     isLocalMode.value = false;
     localStorage.setItem('localMode', 'false');
     $message.success($t('yi-qie-huan-dao-zai-xian-mo-shi'));
+    showLocalModeWindow.value = false; // 禁用后关闭窗口
 };
 
 // 更新axios请求实例的baseURL
 const updateAxiosBaseURL = (newBaseUrl) => {
     updateBaseURL(newBaseUrl);
-};
-
-// 显示本地模式下载提示
-const showLocalModeDownload = async () => {
-    await window.$modal.info(
-        '本地模式用于公共服务器掉线或卡顿时使用。' +
-        '点击确定将跳转到下载页面：https://gitee.com/huchangzhi/hmusic/releases/download/v1.0/app_win.exe'
-    );
-    openRegisterUrl('https://gitee.com/huchangzhi/hmusic/releases/download/v1.0/app_win.exe');
 };
 </script>
 <style scoped>
@@ -601,20 +571,30 @@ header {
     color: #666;
 }
 
-/* 本地模式面板样式 */
-.local-mode-panel {
-    position: absolute;
-    top: 50px;
+/* 本地模式窗口样式 */
+.local-mode-window-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
     right: 0;
-    background-color: #fff;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    width: 250px;
-    z-index: 1001;
-    animation: fadeInOut 0.3s ease-in-out;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
 }
 
-.panel-header {
+.local-mode-window {
+    position: relative;
+    background: #fff;
+    border-radius: 8px;
+    width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    text-align: left;
+}
+
+.window-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -622,7 +602,7 @@ header {
     border-bottom: 1px solid #eee;
 }
 
-.panel-header h3 {
+.window-header h3 {
     margin: 0;
     font-size: 16px;
     color: var(--primary-color);
@@ -640,26 +620,26 @@ header {
     color: #333;
 }
 
-.panel-content {
-    padding: 15px;
+.window-content {
+    padding: 20px;
 }
 
-.panel-content p {
-    margin: 0 0 15px 0;
+.window-content p {
+    margin: 0 0 20px 0;
     font-size: 14px;
     color: #666;
     line-height: 1.4;
 }
 
-.panel-buttons {
+.window-buttons {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.panel-buttons button {
+.window-buttons button {
     width: 100%;
-    padding: 8px;
+    padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
@@ -667,7 +647,8 @@ header {
     transition: all 0.2s;
 }
 
-.panel-buttons button:disabled {
+.window-buttons button:disabled,
+.window-buttons button.disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
@@ -678,7 +659,7 @@ header {
     border-color: var(--primary-color);
 }
 
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled):not(.disabled) {
     opacity: 0.9;
 }
 
@@ -688,7 +669,7 @@ header {
     border-color: #dee2e6;
 }
 
-.btn-secondary:hover:not(:disabled) {
+.btn-secondary:hover:not(:disabled):not(.disabled) {
     background-color: #e9ecef;
 }
 
