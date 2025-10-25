@@ -50,11 +50,35 @@
                                 </a>
                             </li>
                             <li>
-                                <a @click="toggleLocalMode()">
-                                    <i class="fas fa-plug"></i> {{ isLocalMode ? $t('ben-di-mo-shi-guan') : $t('ben-di-mo-shi-kai') }}
+                                <a @click="openLocalModePanel()">
+                                    <i class="fas fa-plug"></i> {{ $t('ben-di-mo-shi') }}
                                 </a>
                             </li>
                         </ul>
+                    </div>
+                </div>
+                
+                <!-- 本地模式面板 -->
+                <div v-if="showLocalModePanel" class="local-mode-panel" @click.stop>
+                    <div class="panel-header">
+                        <h3>{{ $t('ben-di-mo-shi') }}</h3>
+                        <button class="close-btn" @click="showLocalModePanel = false">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <p>{{ $t('ben-di-mo-shi-shuo-ming') }}</p>
+                        <div class="panel-buttons">
+                            <button @click="enableLocalMode" class="btn-primary" :disabled="isLocalMode">
+                                {{ $t('da-kai') }}
+                            </button>
+                            <button @click="disableLocalMode" class="btn-secondary" :disabled="!isLocalMode">
+                                {{ $t('guan-bi') }}
+                            </button>
+                            <button @click="downloadLocalServer" class="btn-download">
+                                {{ $t('xia-zai-fu-wu-duan') }}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -208,6 +232,7 @@ const isVersionLower = (current, latest) => {
 
 // 本地模式相关
 const isLocalMode = ref(false);
+const showLocalModePanel = ref(false);
 const originalApiUrl = import.meta.env.VITE_APP_API_URL || 'http://127.0.0.1:6521';
 const localApiUrl = 'http://127.0.0.1:6521';
 
@@ -219,26 +244,32 @@ onMounted(() => {
     } else {
         isLocalMode.value = false;
     }
+    
+    // 添加点击事件监听，用于关闭面板
+    document.addEventListener('click', handleClickOutsideLocalPanel);
 });
 
-// 切换本地模式
-const toggleLocalMode = async () => {
-    if (!isLocalMode.value) {
-        const result = await window.$modal.confirm(
-            '启用本地模式将切换API地址为http://127.0.0.1:6521，适用于公共服务器掉线或卡顿时使用。' +
-            '您需要先下载服务端，点击确定将跳转到下载页面。'
-        );
-        if (result) {
-            // 打开下载链接
-            openRegisterUrl('https://gitee.com/huchangzhi/hmusic/releases/download/v1.0/app_win.exe');
-            enableLocalMode();
-        }
-    } else {
-        const result = await window.$modal.confirm('确定要关闭本地模式吗？');
-        if (result) {
-            disableLocalMode();
-        }
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutsideLocalPanel);
+});
+
+// 打开本地模式面板
+const openLocalModePanel = () => {
+    showLocalModePanel.value = !showLocalModePanel.value;
+};
+
+// 外部点击处理 - 用于关闭本地模式面板
+const handleClickOutsideLocalPanel = (event) => {
+    const localPanel = document.querySelector('.local-mode-panel');
+    if (localPanel && !localPanel.contains(event.target) && !event.target.closest('.profile')) {
+        showLocalModePanel.value = false;
     }
+};
+
+// 下载本地服务器
+const downloadLocalServer = () => {
+    openRegisterUrl('https://gitee.com/huchangzhi/hmusic/releases/download/v1.0/app_win.exe');
+    $message.info($t('fu-wu-duan-xia-zai-zhong'));
 };
 
 // 启用本地模式
@@ -266,6 +297,15 @@ const disableLocalMode = () => {
 // 更新axios请求实例的baseURL
 const updateAxiosBaseURL = (newBaseUrl) => {
     updateBaseURL(newBaseUrl);
+};
+
+// 显示本地模式下载提示
+const showLocalModeDownload = async () => {
+    await window.$modal.info(
+        '本地模式用于公共服务器掉线或卡顿时使用。' +
+        '点击确定将跳转到下载页面：https://gitee.com/huchangzhi/hmusic/releases/download/v1.0/app_win.exe'
+    );
+    openRegisterUrl('https://gitee.com/huchangzhi/hmusic/releases/download/v1.0/app_win.exe');
 };
 </script>
 <style scoped>
@@ -545,5 +585,106 @@ header {
     right: 10px;
     font-size: 12px;
     color: #666;
+}
+
+/* 本地模式面板样式 */
+.local-mode-panel {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    width: 250px;
+    z-index: 1001;
+    animation: fadeInOut 0.3s ease-in-out;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--primary-color);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #666;
+}
+
+.close-btn:hover {
+    color: #333;
+}
+
+.panel-content {
+    padding: 15px;
+}
+
+.panel-content p {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.panel-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.panel-buttons button {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.panel-buttons button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.btn-secondary {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    border-color: #dee2e6;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #e9ecef;
+}
+
+.btn-download {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.btn-download:hover {
+    opacity: 0.9;
 }
 </style>

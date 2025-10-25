@@ -215,5 +215,8 @@
   "nian": "年",
   "ting-ge-shi-chang": "听歌时长",
   "ben-di-mo-shi-kai": "本地模式开",
-  "ben-di-mo-shi-guan": "本地模式关"
+  "ben-di-mo-shi": "本地模式",
+  "ben-di-mo-shi-shuo-ming": "用于公共服务器掉线或卡顿时使用",
+  "xia-zai-fu-wu-duan": "下载服务端",
+  "fu-wu-duan-xia-zai-zhong": "服务端下载中..."
 }
