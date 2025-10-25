@@ -86,9 +86,6 @@
             </div>
         </div>
     </div>
-            </div>
-        </nav>
-    </header>
     <div v-if="isDisclaimerVisible" class="modal-overlay" @click="Disclaimer">
         <div class="modal-content" @click.stop>
             <h2>{{ $t('mian-ze-sheng-ming') }}</h2>
@@ -203,16 +200,15 @@ onUnmounted(() => {
 
 const handleClickOutside = (event) => {
     const profileMenu = document.querySelector('.profile-menu');
-    const localPanel = document.querySelector('.local-mode-panel');
+    const localWindow = document.querySelector('.local-mode-window');
     
-    // 如果点击的是本地模式面板或其内部元素，则不关闭主菜单
-    if (localPanel && localPanel.contains(event.target)) {
+    // 如果点击的是本地模式窗口或其内部元素，则不关闭主菜单
+    if (localWindow && localWindow.contains(event.target)) {
         return;
     }
     
     if (profileMenu && !profileMenu.contains(event.target) && !event.target.closest('.profile')) {
         showProfile.value = false;
-        showLocalModePanel.value = false; // 同时关闭本地模式面板
     }
 };
 
@@ -260,6 +256,16 @@ onMounted(() => {
         isLocalMode.value = false;
     }
 });
+
+// 切换本地模式窗口
+const toggleLocalModeMenu = () => {
+    showLocalModeWindow.value = true;
+};
+
+// 关闭本地模式窗口
+const closeLocalModeWindow = () => {
+    showLocalModeWindow.value = false;
+};
 
 // 下载本地服务器
 const downloadLocalServer = () => {
