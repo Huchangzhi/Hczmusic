@@ -3,16 +3,19 @@ import {
     createWindow, createTray, createTouchBar, startApiServer,
     stopApiServer, registerShortcut,
     playStartupSound, createLyricsWindow, setThumbarButtons,
-    registerProtocolHandler, sendHashAfterLoad
+    registerProtocolHandler, sendHashAfterLoad, getTray, createMvWindow
 } from './appServices.js';
+import { initializeExtensions, cleanupExtensions } from './extensions.js';
 import { setupAutoUpdater } from './updater.js';
 import apiService from './apiService.js';
 import Store from 'electron-store';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { t } from './i18n.js';
 
 let mainWindow = null;
 let blockerId = null;
+let lastStatusBarLyric = ''; // 缓存上一次的状态栏歌词
 const store = new Store();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,14 +50,15 @@ app.on('ready', () => {
             apiService.init(mainWindow);
             registerProtocolHandler(mainWindow);
             sendHashAfterLoad(mainWindow);
+            initializeExtensions();
         } catch (error) {
             console.log('初始化应用时发生错误:', error);
             createTray(null);
             dialog.showMessageBox({
                 type: 'error',
-                title: '错误',
-                message: '初始化应用时发生错误。',
-                buttons: ['确定']
+                title: t('error'),
+                message: t('init-error'),
+                buttons: [t('ok')]
             }).then(result => {
                 if (result.response === 0) {
                     app.isQuitting = true;
@@ -67,9 +71,9 @@ app.on('ready', () => {
         createTray(null);
         dialog.showMessageBox({
             type: 'error',
-            title: '错误',
-            message: 'API 服务启动失败，请检查！',
-            buttons: ['确定']
+            title: t('error'),
+            message: t('api-error'),
+            buttons: [t('ok')]
         }).then(result => {
             if (result.response === 0) {
                 app.isQuitting = true;
@@ -111,6 +115,7 @@ app.on('before-quit', () => {
     }
     stopApiServer();
     apiService.stop();
+    cleanupExtensions();
 });
 // 关闭所有窗口
 app.on('window-all-closed', () => {
@@ -195,6 +200,29 @@ ipcMain.on('lyrics-data', (event, lyricsData) => {
     if (lyricsWindow) {
         lyricsWindow.webContents.send('lyrics-data', lyricsData);
     }
+
+    // 状态栏歌词功能（仅支持Mac系统）
+    if (process.platform === 'darwin') {
+        const settings = store.get('settings');
+        if (settings?.statusBarLyrics === 'on') {
+            const tray = getTray();
+            if (tray) {
+                const currentLyric = lyricsData?.currentLyric || '';
+                // 只在歌词文本发生变化时才更新状态栏，减少不必要的调用
+                if (currentLyric !== lastStatusBarLyric) {
+                    tray.setTitle(currentLyric);
+                    lastStatusBarLyric = currentLyric;
+                }
+            }
+        } else if (lastStatusBarLyric !== '') {
+            // 如果关闭了状态栏歌词功能，清空状态栏文本和缓存
+            const tray = getTray();
+            if (tray) {
+                tray.setTitle('');
+                lastStatusBarLyric = '';
+            }
+        }
+    }
 });
 ipcMain.on('server-lyrics', (event, lyricsData) => {
     apiService.updateLyrics(lyricsData);
@@ -217,8 +245,8 @@ ipcMain.on('desktop-lyrics-action', (event, action) => {
             if (lyricsWindow) {
                 lyricsWindow.close();
                 new Notification({
-                    title: '桌面歌词已关闭',
-                    body: '仅本次生效',
+                    title: t('desktop-lyrics-closed'),
+                    body: t('this-time-only'),
                     icon: path.join(__dirname, '../build/icons/logo.png')
                 }).show();
                 mainWindow.lyricsWindow = null;
@@ -258,6 +286,24 @@ ipcMain.on('open-url', (event, url) => {
 })
 
 ipcMain.on('set-tray-title', (event, title) => {
-    createTray(mainWindow, '正在播放：' + title);
+    createTray(mainWindow, t('now-playing') + title);
     mainWindow.setTitle(title);
 })
+
+
+ipcMain.handle('open-mv-window', (e, url) => {
+    return (async () => {
+        const mvWindow = createMvWindow();
+        try {
+            await mvWindow.loadURL(url);
+            mvWindow.show();
+            return true;
+        } catch (error) {
+            console.error('[open-mv-window] loadURL failed:', url, error);
+            try {
+                mvWindow.close();
+            } catch {}
+            throw error;
+        }
+    })();
+});

@@ -37,7 +37,7 @@
                 </div>
             </div>
         </div>
-        <h2 class="section-title" style="margin-bottom: 0px;">{{ $t('wo-xi-huan-ting') }}</h2>
+        <h2 class="section-title" @click="addAllSongsToQueue">{{ $t('wo-xi-huan-ting') }}</h2>
         <div class="favorite-section">
             <div class="song-list">
                 <div v-if="isLoading" class="skeleton-loader">
@@ -79,19 +79,27 @@
         <!-- 音乐卡片网格（显示歌单或关注的歌手） -->
         <div class="music-grid">
             <template v-if="selectedCategory === 0 || selectedCategory === 1 || selectedCategory === 2">
-                <div v-if="selectedCategory === 0 && !isLoading" class="music-card create-playlist-button" @click="goToCloudDrive">
-                    <img :src="`./assets/images/cloud-disk.png`" class="album-image" />
-                    <div class="album-info">
-                        <h3>我的云盘</h3>
-                        <p>(*/ω＼*)</p>
-                    </div>
+                <div v-if="selectedCategory === 0 && !isLoading" class="music-card create-playlist-button">
+                    <router-link :to="{
+                        path: '/CloudDrive'
+                    }">
+                        <img :src="`./assets/images/cloud-disk.png`" class="album-image" />
+                        <div class="album-info">
+                            <h3>我的云盘</h3>
+                            <p>(*/ω＼*)</p>
+                        </div>
+                    </router-link>
                 </div>
-                <div v-if="selectedCategory === 0 && !isLoading" class="music-card create-playlist-button" @click="goToLocalMusic">
-                    <img :src="`./assets/images/local-music.png`" class="album-image" />
-                    <div class="album-info">
-                        <h3>本地音乐</h3>
-                        <p>(〃'▽'〃)</p>
-                    </div>
+                <div v-if="selectedCategory === 0 && !isLoading" class="music-card create-playlist-button">
+                    <router-link :to="{
+                        path: '/LocalMusic'
+                    }">
+                        <img :src="`./assets/images/local-music.png`" class="album-image" />
+                        <div class="album-info">
+                            <h3>本地音乐</h3>
+                            <p>(〃'▽'〃)</p>
+                        </div>
+                    </router-link>
                 </div>
                 <div class="music-card"
                     v-for="(item, index) in (selectedCategory === 0 ? userPlaylists : selectedCategory === 1 ? collectedPlaylists : collectedAlbums)"
@@ -108,10 +116,10 @@
                         </div>
                     </router-link>
                 </div>
-                <div v-if="selectedCategory === 0 && !isLoading" class="music-card create-playlist-button" @click="createPlaylist">
+                <div v-if="selectedCategory === 0 && !isLoading" class="music-card create-playlist-button">
                     <i class="fas fa-plus"></i>
-                    <img :src="`./assets/images/ti111mg.png`" class="album-image" />
-                    <div class="album-info">
+                    <img :src="`./assets/images/ti111mg.png`" class="album-image" @click="createPlaylist"/>
+                    <div class="album-info" @click="createPlaylist">
                         <h3>{{ $t('chuang-jian-ge-dan') }}</h3>
                         <p>(≧∀≦)♪</p>
                     </div>
@@ -264,7 +272,7 @@ const getfollow = async () => {
 const getplaylist = async () => {
     try {
         const playlistResponse = await get('/user/playlist',{
-            pagesize:100,
+            pagesize:500,
             t: localStorage.getItem('t')
         });
         if (playlistResponse.status === 1) {
@@ -320,14 +328,6 @@ const createPlaylist = async () => {
     }
 }
 
-const goToCloudDrive= () => {
-    router.push('/CloudDrive');
-}
-
-const goToLocalMusic= () => {
-    router.push('/LocalMusic');
-}
-
 const goToArtistDetail = (artist) => {
     if (!artist.singerid) return;
     router.push({
@@ -345,19 +345,38 @@ const signIn = async () => {
             window.$modal.alert(`签到成功，获得${res.data.award_vip_hour}小时VIP时长`);
         }
     } catch (error) {
-        window.$modal.alert('签到失败，请勿频繁签到');
+        window.$modal.alert('签到失败![该接口将在未来被移除]');
     }
 }
 const getVip = async () => {
     try{
         const vipResponse = await get('/youth/day/vip');
-        if (vipResponse.status === 1) {
+        const result = await window.$modal.confirm('是否继续升级至概念版VIP,享受更高音质?');
+        if(result){
+            try{
+                const vipResponse = await get('/youth/day/vip/upgrade');
+                if (vipResponse.status === 1) {
+                    window.$modal.alert('升级成功，获得1天概念版VIP');
+                }
+            } catch (error) {
+                window.$modal.alert(error.error_msg || '升级VIP失败, 一天仅限一次');
+            }
+        }else if (vipResponse.status === 1) {
             window.$modal.alert(`签到成功，获得1天畅听VIP`);
         }
     } catch (error) {
         window.$modal.alert('获取VIP失败, 一天仅限一次');
     }
 }
+const addAllSongsToQueue = () => {
+    props.playerControl.addPlaylistToQueue(listenHistory.value.map(song => ({
+        hash: song.hash,
+        name: song.name,
+        cover: song.image?.replace("{size}", 480),
+        author: song.author_name,
+        timelen: song.duration
+    })));
+};
 </script>
 
 <style scoped>
@@ -387,6 +406,9 @@ const getVip = async () => {
     font-weight: bold;
     margin-bottom: 30px;
     color: var(--primary-color);
+    cursor: cell;
+    margin-bottom: 0px;
+    display: inline-block;
 }
 
 .profile-section {

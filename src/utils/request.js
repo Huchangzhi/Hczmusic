@@ -34,16 +34,22 @@ httpClient.interceptors.request.use(
         const MoeAuth = MoeAuthStore();
         const token = MoeAuth.UserInfo?.token;
         const userid = MoeAuth.UserInfo?.userid;
+        const dfid = MoeAuth.UserInfo?.dfid;
 
-        if (token && userid) {
-            const cookieParam = `cookie=token=${encodeURIComponent(token)};userid=${encodeURIComponent(userid)}`;
-            config.url += config.url.includes('?') ? `&${cookieParam}` : `?${cookieParam}`;
+        const authParts = [];
+        if (token) authParts.push(`token=${encodeURIComponent(token)}`);
+        if (userid) authParts.push(`userid=${encodeURIComponent(userid)}`);
+        if (dfid) authParts.push(`dfid=${encodeURIComponent(dfid)}`);
+
+        if (authParts.length > 0) {
+            config.headers = {
+                ...config.headers,
+                Authorization: authParts.join(';')
+            };
         }
         return config;
     },
-    error => {
-        return Promise.reject(error);
-    }
+    error => Promise.reject(error)
 );
 
 // 响应拦截器
@@ -56,8 +62,8 @@ httpClient.interceptors.response.use(
             console.error(`http error status:${error.response.status}`,error.response.data);
             if (error.response?.data?.data) {
                 console.error(error.response.data.data);
-            } else {
-                $message.error('服务器错误,请稍后再试!');
+            // } else {
+            //     $message.error('服务器错误,请稍后再试!');
             }
         } else if (error.request) {
             console.error('No response received:', error.request);

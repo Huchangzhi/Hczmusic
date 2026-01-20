@@ -18,13 +18,14 @@ An open-source, concise, and aesthetically pleasing third-party client for KuGou
     <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_tw.md" target="blank"><strong>🇨🇳 繁体中文</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
     <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_ja.md" target="blank"><strong>🇯🇵 日本語</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
     <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_en.md" target="blank"><strong>🇺🇸 English</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
-    <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_ko.md" target="blank"><strong>🇰🇷 한국어</strong></a>
+    <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_ko.md" target="blank"><strong>🇰🇷 한국어</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+    <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_ru.md" target="blank"><strong>🇷🇺 Русский</strong></a>
     <br />
     <br />
   </p>
 </p>
 
-![images]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png )
+![images]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/1.png )
 
 ## ❤️ Preface
 
@@ -50,11 +51,10 @@ I said on my personal introduction page that I particularly enjoy listening to m
 -  🛠  More features under development
 
 ## 📢 Todo List
-- [ ]  📺  Support MV playback
+- [x]  📺  Support MV playback
 - [x]  🌚 Light/Dark Mode  Automatic switching
 - [x]  👆  Support Touch Bar
 - [x]  🖥️  Support PWA, you can click on the right side of the address bar in Chrome/Edge ➕  Install to computer
-- [ ]  🟥  Supports Last.fm Scrobble
 - [ ]  🎧  Support Mpris
 - [x]  ⌨️   Global shortcut keys
 - [x]  🤟  Multi language support
@@ -232,17 +232,17 @@ In order to avoid disrupting the structure of the original project and facilitat
 - [Apple Music]( https://music.apple.com )
 - [YouTube Music]( https://music.youtube.com )
 - [YesPlayMusic]( https://github.com/qier222/YesPlayMusic )
--[Cool Dog Music](https://kugou.com/ )
+- [Cool Dog Music](https://kugou.com/ )
 
 ##  🖼️  screenshot
 
-![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/1.png )
-![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/2.png )
-![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/3.png )
-![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/4.png )
-![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png )
-![image]( https://github.com/iAJue/MoeKoeMusic/raw/main/images/6.png )
-
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/2.png)
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/3.png)
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/4.png)
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/6.png)
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/7.png)
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/8.png)
 
 ## 🗓️ Star History
 

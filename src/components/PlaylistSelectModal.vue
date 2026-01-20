@@ -11,7 +11,7 @@
                     </li>
                 </ul>
                 <div v-else>{{ t('mei-you-ge-dan') }}</div>
-                <button class="close-btn-modal" @click="isOpen = false">{{ t('guan-bi') }}</button>
+                <button class="close-btn-modal" @click="isOpen = false">{{ t('guan-bi-an-niu') }}</button>
             </div>
         </div>
     </transition>
@@ -138,6 +138,8 @@ defineExpose({
     list-style: none;
     padding: 0;
     margin: 15px 0;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 .playlist-select-list li {

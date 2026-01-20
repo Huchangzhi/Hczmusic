@@ -17,25 +17,25 @@
                 <i v-else class="fas fa-music"></i>
             </div>
             <div class="song-info" @click="toggleLyrics(currentSong.hash, currentTime)">
-                <div class="song-title">{{ currentSong?.name || "MoeKoeMusic" }}</div>
-                <div class="artist">{{ currentSong?.author || "MoeJue" }}</div>
+                <div class="song-title" @click.stop="searchSong(currentSong.name)">{{ currentSong?.name || "MoeKoeMusic" }}</div>
+                <div class="artist" @click.stop="searchSong(currentSong.author)">{{ currentSong?.author || "MoeJue" }}</div>
             </div>
             <div class="controls">
-                <button class="control-btn" @click="playSongFromQueue('previous')">
+                <button class="control-btn" :title="t('shang-yi-shou')" @click="playSongFromQueue('previous')">
                     <i class="fas fa-step-backward"></i>
                 </button>
-                <button class="control-btn" @click="togglePlayPause">
+                <button class="control-btn" :title="t('zan-ting-bo-fang')" @click="togglePlayPause">
                     <i :class="playing ? 'fas fa-pause' : 'fas fa-play'"></i>
                 </button>
-                <button class="control-btn" @click="playSongFromQueue('next')">
+                <button class="control-btn" :title="t('xia-yi-shou')" @click="playSongFromQueue('next')">
                     <i class="fas fa-step-forward"></i>
                 </button>
             </div>
             <div class="extra-controls">
-                <button class="extra-btn" title="桌面歌词" v-if="isElectron()" @click="desktopLyrics"><i
+                <button class="extra-btn" :title="t('zhuo-mian-ge-ci')" v-if="isElectron()" @click="desktopLyrics"><i
                         class="fas">词</i></button>
                 <div class="playback-speed">
-                    <button class="extra-btn" @click="toggleSpeedMenu" title="播放速度">
+                    <button class="extra-btn" @click="toggleSpeedMenu" :title="t('bo-fang-su-du')">
                         <i class="fas fa-tachometer-alt"></i>
                     </button>
                     <div v-if="showSpeedMenu" class="speed-menu">
@@ -45,11 +45,11 @@
                         </div>
                     </div>
                 </div>
-                <button class="extra-btn" title="我喜欢" @click="playlistSelect.toLike()"><i
+                <button class="extra-btn" :title="t('wo-xi-huan')" @click="playlistSelect.toLike()"><i
                         class="fas fa-heart"></i></button>
-                <button class="extra-btn" title="收藏至" @click="playlistSelect.fetchPlaylists()"><i
+                <button class="extra-btn" :title="t('shou-cang-zhi')" @click="playlistSelect.fetchPlaylists()"><i
                         class="fas fa-add"></i></button>
-                <button class="extra-btn" title="分享歌曲" @click="share('share?hash=' + currentSong.hash)"><i
+                <button class="extra-btn" :title="t('fen-xiang-ge-qu')" @click="share(currentSong.name, currentSong.hash)"><i
                         class="fas fa-share"></i></button>
                 <button class="extra-btn" @click="togglePlaybackMode">
                     <i v-if="currentPlaybackModeIndex != '2'" :class="currentPlaybackMode.icon"
@@ -59,7 +59,7 @@
                         <sup>1</sup>
                     </span>
                 </button>
-                <button class="extra-btn" @click="queueList.openQueue()"><i class="fas fa-list"></i></button>
+                <button class="extra-btn" :title="t('bo-fang-lie-biao')" @click="queueList.openQueue()"><i class="fas fa-list"></i></button>
                 <!-- 音量控制 -->
                 <div class="volume-control" @wheel="handleVolumeScroll">
                     <i :class="isMuted ? 'fas fa-volume-mute' : 'fas fa-volume-up'" @click="toggleMute"></i>
@@ -84,18 +84,30 @@
                 <div class="close-btn">
                     <i class="fas fa-chevron-down" @click="toggleLyrics(currentSong.hash, currentTime)"></i>
                 </div>
-                <div class="lyrics-mode-btn" v-if="hasMultiLyricsMode" @click="switchLyricsMode" :title="lyricsMode === 'translation' ? '切换到音译' : '切换到翻译'">
+                <div class="lyrics-mode-btn" v-if="hasMultiLyricsMode" @click="switchLyricsMode" :title="lyricsMode === 'translation' ? t('qie-huan-dao-yin-yi') : t('qie-huan-dao-fan-yi')">
                     <i class="fas fa-language"></i>
                 </div>
 
                 <div class="left-section">
-                    <div class="album-art-large">
-                        <img v-if="easterEggImage" :src="easterEggImage.src" :class="easterEggClass" alt="Easter Egg" />
-                        <img :src="currentSong?.img || './assets/images/!.png'" alt="Album Art" />
+                    <div class="album-art-container" @click="toggleCoverMode">
+                        <transition name="cover-fade" mode="out-in">
+                            <div v-if="coverMode === 'vinyl'" key="vinyl" class="vinyl-player">
+                                <!-- 唱片播放器模式 -->
+                                <div class="vinyl-disc" :class="{ 'rotating': playing }">
+                                    <img :src="currentSong?.img || './assets/images/!.png'" alt="Album Art" class="vinyl-cover" />
+                                </div>
+                                <div class="tonearm" :class="{ 'playing': playing }"></div>
+                            </div>
+                            <div v-else key="square" class="album-art-large">
+                                <!-- 普通封面模式 -->
+                                <img v-if="easterEggImage" :src="easterEggImage.src" :class="easterEggClass" alt="Easter Egg" />
+                                <img :src="currentSong?.img || './assets/images/!.png'" alt="Album Art" />
+                            </div>
+                        </transition>
                     </div>
                     <div class="song-details">
-                        <div class="song-title">{{ currentSong?.name }}</div>
-                        <div class="artist">{{ currentSong?.author }}</div>
+                        <div class="song-title" @click="searchSong(currentSong.name)">{{ currentSong?.name }}</div>
+                        <div class="artist" @click="searchSong(currentSong.author)">{{ currentSong?.author }}</div>
                     </div>
 
                     <!-- 播放进度条 -->
@@ -116,19 +128,19 @@
                     </div>
 
                     <div class="player-controls">
-                        <button class="control-btn like-btn" title="我喜欢" @click="playlistSelect.toLike()">
+                        <button class="control-btn like-btn" :title="t('wo-xi-huan')" @click="playlistSelect.toLike()">
                             <i class="fas fa-heart"></i>
                         </button>
-                        <button class="control-btn" @click="playSongFromQueue('previous')">
+                        <button class="control-btn" :title="t('shang-yi-shou')" @click="playSongFromQueue('previous')">
                             <i class="fas fa-step-backward"></i>
                         </button>
-                        <button class="control-btn" @click="togglePlayPause">
+                        <button class="control-btn" :title="t('zan-ting-bo-fang')" @click="togglePlayPause">
                             <i :class="playing ? 'fas fa-pause' : 'fas fa-play'"></i>
                         </button>
-                        <button class="control-btn" @click="playSongFromQueue('next')">
+                        <button class="control-btn" :title="t('xia-yi-shou')" @click="playSongFromQueue('next')">
                             <i class="fas fa-step-forward"></i>
                         </button>
-                        <button class="control-btn" @click="togglePlaybackMode">
+                        <button class="control-btn" :title="t('qie-huan-bo-fang-mo-shi')" @click="togglePlaybackMode">
                             <i v-if="currentPlaybackModeIndex != '2'" :class="currentPlaybackMode.icon" :title="currentPlaybackMode.title"></i>
                             <span v-else class="loop-icon" :title="currentPlaybackMode.title">
                                 <i class="fas fa-repeat"></i>
@@ -163,13 +175,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useMusicQueueStore } from '../stores/musicQueue';
 import { useI18n } from 'vue-i18n';
 import PlaylistSelectModal from './PlaylistSelectModal.vue';
 import QueueList from './QueueList.vue';
 import { useRouter } from 'vue-router';
-import { getCover, share } from '../utils/utils';
+import { getCover, getAudioOutputDeviceSignature, share } from '../utils/utils';
 
 // 从统一入口导入所有模块
 import {
@@ -194,6 +206,7 @@ const lyricsFontSize = ref('24px');
 const lyricsAlign = ref('center');
 const lyricsBackground = ref('on');
 const sliderElement = ref(null);
+const coverMode = ref(localStorage.getItem('lyrics-cover-mode') || 'square');
 
 const isDragging = ref(false);
 const lyricsFlag = ref(false);
@@ -232,37 +245,57 @@ const updateCurrentTime = throttle(() => {
         progressWidth.value = (currentTime.value / audio.duration) * 100;
     }
 
+    // 更新SMTC位置状态
+    if (audio.duration && currentSong.value?.hash) {
+        mediaSession.updatePositionState(audio.currentTime, audio.duration, currentSpeed.value);
+    }
+
     const savedConfig = JSON.parse(localStorage.getItem('settings') || '{}');
-    if (audio && (lyricsData.value.length || isLyrics === false)) {
+    const hasLyricsData = Array.isArray(lyricsData.value) && lyricsData.value.length > 0;
+
+    if (audio) {
         if (savedConfig?.lyricsAlign != lyricsAlign.value) lyricsAlign.value = savedConfig.lyricsAlign;
 
-        highlightCurrentChar(audio.currentTime, !lyricsFlag.value);
+        if (hasLyricsData) {
+            highlightCurrentChar(audio.currentTime, !lyricsFlag.value);
+        }
+
         if (isElectron()) {
-            if (savedConfig?.desktopLyrics === 'on') {
+            const desktopLyricsSource = hasLyricsData ? lyricsData.value : [];
+            const desktopLyricsPayload = JSON.parse(JSON.stringify(desktopLyricsSource));
+            const serverLyricsSource = hasLyricsData && originalLyrics.value ? originalLyrics.value : [];
+            const serverLyricsPayload = JSON.parse(JSON.stringify(serverLyricsSource));
+            const currentSongPayload = JSON.parse(JSON.stringify(currentSong.value ?? null));
+
+            if (savedConfig?.desktopLyrics === 'on' || savedConfig?.statusBarLyrics === 'on') {
+                const currentLine = hasLyricsData ? getCurrentLineText(audio.currentTime) : '';
                 window.electron.ipcRenderer.send('lyrics-data', {
                     currentTime: audio.currentTime,
-                    lyricsData: JSON.parse(JSON.stringify(lyricsData.value)),
-                    currentSongHash: currentSong.value.hash
+                    lyricsData: desktopLyricsPayload,
+                    currentSongHash: currentSong.value?.hash || '',
+                    currentLyric: currentLine
                 });
             }
             if (savedConfig?.apiMode === 'on') {
                 window.electron.ipcRenderer.send('server-lyrics', {
                     currentTime: audio.currentTime,
-                    lyricsData: JSON.parse(JSON.stringify(originalLyrics.value)),
-                    currentSong: JSON.parse(JSON.stringify(currentSong.value)),
+                    lyricsData: serverLyricsPayload,
+                    currentSong: currentSongPayload,
                     duration: audio.duration
                 });
             }
             if (window.electron.platform == 'darwin' && savedConfig?.touchBar == 'on') {
-                const currentLine = getCurrentLineText(audio.currentTime);
+                const currentLine = hasLyricsData ? getCurrentLineText(audio.currentTime) : '';
                 window.electron.ipcRenderer.send(
                     "update-current-lyrics",
                     currentLine
                 );
             }
         }
-    } else if (isElectron() && (savedConfig?.desktopLyrics === 'on' || savedConfig?.apiMode === 'on')) {
-        if(isLyrics === false) return;
+    }
+
+    if (!hasLyricsData && isElectron() && (savedConfig?.desktopLyrics === 'on' || savedConfig?.statusBarLyrics === 'on' || savedConfig?.apiMode === 'on')) {
+        if (isLyrics === false) return;
         getCurrentLyrics();
     }
 
@@ -271,10 +304,25 @@ const updateCurrentTime = throttle(() => {
 
 // 初始化各个模块
 const audioController = useAudioController({ onSongEnd, updateCurrentTime });
-const { playing, isMuted, volume, changeVolume, audio, playbackRate, setPlaybackRate } = audioController;
+const { playing, isMuted, volume, changeVolume, audio, playbackRate, setPlaybackRate, applyLoudnessNormalization, ensureAudioContextRunning, toggleLoudnessNormalization, loudnessNormalizationEnabled, currentLoudnessGain, webAudioInitialized } = audioController;
 
 const lyricsHandler = useLyricsHandler(t);
 const { lyricsData, originalLyrics, showLyrics, scrollAmount, SongTips, lyricsMode, toggleLyrics, getLyrics, highlightCurrentChar, resetLyricsHighlight, getCurrentLineText, scrollToCurrentLine, toggleLyricsMode } = lyricsHandler;
+
+// 获取当前播放时间的歌词行索引
+const getCurrentLineIndex = (currentTime) => {
+    if (!lyricsData.value || lyricsData.value.length === 0) return -1;
+    for (let i = 0; i < lyricsData.value.length; i++) {
+        const line = lyricsData.value[i];
+        if (line.characters && line.characters.length > 0) {
+            const startTime = line.characters[0].startTime / 1000;
+            if (startTime > currentTime) {
+                return Math.max(0, i - 1);
+            }
+        }
+    }
+    return lyricsData.value.length - 1;
+};
 
 const progressBar = useProgressBar(audio, resetLyricsHighlight);
 const { progressWidth, isProgressDragging, showTimeTooltip, tooltipPosition, tooltipTime, climaxPoints, formatTime, getMusicHighlights, onProgressDragStart, updateProgressFromEvent, updateTimeTooltip, hideTimeTooltip } = progressBar;
@@ -284,7 +332,7 @@ const { currentPlaybackModeIndex, currentPlaybackMode, playedSongsStack, current
 
 const mediaSession = useMediaSession();
 
-const songQueue = useSongQueue(t, musicQueueStore);
+const songQueue = useSongQueue(t, musicQueueStore, queueList);
 const { currentSong, NextSong, addSongToQueue, addCloudMusicToQueue, addLocalMusicToQueue, addLocalPlaylistToQueue, addToNext, getPlaylistAllSongs, addPlaylistToQueue, addCloudPlaylistToQueue } = songQueue;
 
 // 添加自动切换定时器引用
@@ -359,6 +407,12 @@ const switchLyricsMode = () => {
     toggleLyricsMode();
 };
 
+// 切换封面模式（正方形/唱片）
+const toggleCoverMode = () => {
+    coverMode.value = coverMode.value === 'square' ? 'vinyl' : 'square';
+    localStorage.setItem('lyrics-cover-mode', coverMode.value);
+};
+
 // 播放歌曲
 const playSong = async (song) => {
     clearAutoSwitchTimer();
@@ -376,12 +430,29 @@ const playSong = async (song) => {
 
         currentSong.value = structuredClone(song);
 
+        // 应用响度规格化（如果已启用 Web Audio）
+        if (song.loudnessNormalization) {
+            console.log('[PlayerControl] 应用响度规格化:', song.loudnessNormalization);
+            applyLoudnessNormalization(song.loudnessNormalization);
+        } else {
+            console.log('[PlayerControl] 歌曲无响度规格化数据');
+            applyLoudnessNormalization(null);
+        }
+
         audio.src = song.url;
+
+        // 确保 AudioContext 处于运行状态（如果已启用）
+        await ensureAudioContextRunning();
+
         setPlaybackRate(currentSpeed.value);
         console.log('[PlayerControl] 设置音频源:', song.url);
 
         try {
             mediaSession.changeMediaSession(currentSong.value);
+            // 更新SMTC位置状态
+            if (audio.duration) {
+                mediaSession.updatePositionState(audio.currentTime, audio.duration, currentSpeed.value);
+            }
             const playPromise = audio.play();
 
             if (playPromise !== undefined) {
@@ -722,7 +793,7 @@ const handleLyricsWheel = (event) => {
 };
 
 const handleLyricsClick = (lineIndex) => {
-    if (!lyricsFlag.value) return;
+    // if (!lyricsFlag.value) return;
     console.log('[PlayerControl] 点击歌词:', lineIndex);
     const lineStartTime = lyricsData.value[lineIndex].characters[0].startTime;
     audio.currentTime = lineStartTime / 1000;
@@ -731,7 +802,38 @@ const handleLyricsClick = (lineIndex) => {
     lyricsFlag.value = false;
     if (lyricScrollTimer) clearTimeout(lyricScrollTimer);
     lyricScrollTimer = null;
+    // 如果音乐暂停了，自动开始播放
+    if (!playing.value) {
+        audio.play();
+    }
 }
+
+// 复制全部歌词到剪贴板
+const copyLyricsToClipboard = async () => {
+    if (!showLyrics.value || !lyricsData.value || lyricsData.value.length === 0) {
+        return;
+    }
+    try {
+        let lyricsText = '';
+        lyricsData.value.forEach((lineData) => {
+            const originalLine = lineData.characters.map(char => char.char).join('');
+            lyricsText += originalLine + '\n';
+            if (lineData.translated) {
+                lyricsText += lineData.translated + '\n';
+            }
+            if (lineData.romanized) {
+                lyricsText += lineData.romanized + '\n';
+            }
+            if (lineData.translated || lineData.romanized) {
+                lyricsText += '\n';
+            }
+        });
+        await navigator.clipboard.writeText(lyricsText.trim());
+        $message.success('歌词已复制到剪贴板');
+    } catch (error) {
+        $message.error('复制歌词失败');
+    }
+};
 
 // 键盘快捷键
 const handleKeyDown = (event) => {
@@ -751,6 +853,13 @@ const handleKeyDown = (event) => {
             break;
         case 'Escape':
             if (showLyrics.value) toggleLyrics(currentSong.value.hash, audio.currentTime);
+            break;
+        case 'KeyC':
+            // Ctrl+C 或 Cmd+C 复制歌词（仅在全屏歌词界面）
+            if ((event.ctrlKey || event.metaKey) && showLyrics.value) {
+                event.preventDefault();
+                copyLyricsToClipboard();
+            }
             break;
     }
 };
@@ -806,9 +915,95 @@ const toggleMute = () => {
     console.log('[PlayerControl] 切换静音:', isMuted.value, '音量:', volume.value, '实际audio.volume:', audio.volume);
 };
 
+const pausePlayback = (reason) => {
+    clearAutoSwitchTimer();
+    if (!audio.paused) audio.pause();
+    playing.value = false;
+    mediaSession.clearPositionState?.();
+    if (reason) console.log('[PlayerControl] 暂停播放:', reason);
+};
+
 const showSpeedMenu = ref(false);
 const currentSpeed = ref(1.0);
 const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+// 监听音频输出设备变化（例如插拔耳机/切换声卡），变化时暂停播放
+let cleanupAudioOutputDeviceWatcher = null;
+let lastAudioOutputDeviceSignature = null;
+let audioOutputDeviceChangeHandler = null;
+
+const setupAudioOutputDeviceWatcher = () => {
+    if (cleanupAudioOutputDeviceWatcher) return;
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
+
+    void getAudioOutputDeviceSignature().then(signature => {
+        lastAudioOutputDeviceSignature = signature;
+    }).catch(() => {
+        lastAudioOutputDeviceSignature = null;
+    });
+
+    const handler = throttle(() => {
+        void (async () => {
+            try {
+                const signature = await getAudioOutputDeviceSignature();
+                if (signature === null) return;
+                if (lastAudioOutputDeviceSignature === null) {
+                    lastAudioOutputDeviceSignature = signature;
+                    return;
+                }
+                if (signature !== lastAudioOutputDeviceSignature) {
+                    lastAudioOutputDeviceSignature = signature;
+                    if (!audio.paused) pausePlayback('检测到音频输出设备变化');
+                }
+            } catch (error) {
+                console.warn('[PlayerControl] 获取音频输出设备信息失败:', error);
+            }
+        })();
+    }, 800);
+
+    if (navigator.mediaDevices.addEventListener) {
+        navigator.mediaDevices.addEventListener('devicechange', handler);
+        cleanupAudioOutputDeviceWatcher = () => {
+            navigator.mediaDevices.removeEventListener('devicechange', handler);
+        };
+    } else if ('ondevicechange' in navigator.mediaDevices) {
+        const previous = navigator.mediaDevices.ondevicechange;
+        navigator.mediaDevices.ondevicechange = handler;
+        cleanupAudioOutputDeviceWatcher = () => {
+            navigator.mediaDevices.ondevicechange = previous;
+        };
+    }
+};
+
+const setAudioOutputDeviceWatcherEnabled = (enabled) => {
+    if (enabled) {
+        setupAudioOutputDeviceWatcher();
+        return;
+    }
+    cleanupAudioOutputDeviceWatcher?.();
+    cleanupAudioOutputDeviceWatcher = null;
+    lastAudioOutputDeviceSignature = null;
+};
+
+let audioOutputDeviceWatchChangeHandler = null;
+
+const applyAudioOutputDevice = async (deviceId) => {
+    if (typeof audio?.setSinkId !== 'function') {
+        console.warn('[PlayerControl] 当前环境不支持切换音频输出设备（setSinkId不可用）');
+        return false;
+    }
+
+    const sinkId = deviceId || 'default';
+    try {
+        await audio.setSinkId(sinkId);
+        console.log('[PlayerControl] 已切换音频输出设备:', sinkId);
+        return true;
+    } catch (error) {
+        console.warn('[PlayerControl] 切换音频输出设备失败:', error);
+        window.$modal.alert('切换音频输出设备失败,请刷新页面后重试');
+        return false;
+    }
+};
 
 // 切换速度菜单
 const toggleSpeedMenu = () => {
@@ -820,6 +1015,24 @@ const changePlaybackSpeed = (speed) => {
     currentSpeed.value = speed;
     setPlaybackRate(speed);
     showSpeedMenu.value = false;
+    
+    // 更新SMTC位置状态以反映新的播放速率
+    if (audio.duration && currentSong.value?.hash) {
+        mediaSession.updatePositionState(audio.currentTime, audio.duration, speed);
+    }
+};
+
+// 跳转到搜索页面搜索歌曲
+const searchSong = (songName) => {
+    // 关闭全屏歌词
+    if (showLyrics.value) {
+        toggleLyrics(currentSong.value.hash, audio.currentTime);
+    }
+    if (!songName) return;
+    router.push({
+        path: '/search',
+        query: { q: songName }
+    });
 };
 
 // 组件挂载
@@ -828,6 +1041,30 @@ onMounted(() => {
 
     // 初始化音频设置
     audioController.initAudio();
+
+    const savedSettings = JSON.parse(localStorage.getItem('settings') || '{}');
+    setAudioOutputDeviceWatcherEnabled(savedSettings.pauseOnAudioOutputChange === 'on');
+    void applyAudioOutputDevice(savedSettings.audioOutputDevice);
+
+    audioOutputDeviceWatchChangeHandler = (event) => {
+        const enabled = !!event?.detail?.enabled;
+        setAudioOutputDeviceWatcherEnabled(enabled);
+    };
+    window.addEventListener('audio-output-device-watch-change', audioOutputDeviceWatchChangeHandler);
+
+    audioOutputDeviceChangeHandler = (event) => {
+        const deviceId = event?.detail?.deviceId || 'default';
+        void applyAudioOutputDevice(deviceId);
+    };
+    window.addEventListener('audio-output-device-change', audioOutputDeviceChangeHandler);
+
+    // 监听响度规格化开关变更
+    const handleLoudnessChange = (event) => {
+        const enabled = event.detail.enabled;
+        console.log('[PlayerControl] 响度规格化开关变更:', enabled);
+        toggleLoudnessNormalization(enabled);
+    };
+    window.addEventListener('loudness-normalization-change', handleLoudnessChange);
 
     // 初始化歌曲和播放状态
     const current_song = localStorage.getItem('current_song');
@@ -847,8 +1084,11 @@ onMounted(() => {
         } catch (error) {
             console.error('[PlayerControl] 解析保存的歌曲信息失败:', error);
         }
-    } else {
-        console.log('[PlayerControl] 没有缓存的歌曲信息');
+    }
+
+    // 如果有当前歌曲，获取歌词
+    if (currentSong.value?.hash && !currentSong.value.isLocal) {
+        getCurrentLyrics();
     }
 
     // 初始化播放模式
@@ -865,7 +1105,26 @@ onMounted(() => {
     mediaSession.initMediaSession({
         togglePlayPause,
         playPrevious: () => playSongFromQueue('previous'),
-        playNext: () => playSongFromQueue('next')
+        playNext: () => playSongFromQueue('next'),
+        seekBackward: (seekOffset) => {
+            if (audio.currentTime > seekOffset) {
+                audio.currentTime -= seekOffset;
+            } else {
+                audio.currentTime = 0;
+            }
+        },
+        seekForward: (seekOffset) => {
+            if (audio.currentTime + seekOffset < audio.duration) {
+                audio.currentTime += seekOffset;
+            } else {
+                audio.currentTime = audio.duration;
+            }
+        },
+        seekTo: (seekTime) => {
+            if (seekTime >= 0 && seekTime <= audio.duration) {
+                audio.currentTime = seekTime;
+            }
+        }
     });
 
     // 设置系统媒体快捷键
@@ -896,6 +1155,8 @@ onMounted(() => {
     audio.addEventListener('pause', () => {
         playing.value = false;
         console.log('[PlayerControl] 暂停事件');
+        // 暂停时清除SMTC位置状态
+        mediaSession.clearPositionState();
         if (isElectron()) window.electron.ipcRenderer.send('play-pause-action', playing.value, audio.currentTime);
     });
 
@@ -918,10 +1179,35 @@ onMounted(() => {
     console.log('[PlayerControl] 音频初始化完成');
 });
 
+// 监听歌词数据变化，同步歌词到当前播放进度
+watch(lyricsData, (newLyrics) => {
+    if (newLyrics && newLyrics.length > 0 && audio.currentTime > 0) {
+        console.log('[PlayerControl] 歌词数据加载完成，同步到当前播放进度:', audio.currentTime);
+        highlightCurrentChar(audio.currentTime, false);
+        const currentLineIndex = getCurrentLineIndex(audio.currentTime);
+        scrollToCurrentLine(currentLineIndex);
+    }
+});
+
 // 组件卸载清理
 onUnmounted(() => {
     // 清除自动切换定时器
     clearAutoSwitchTimer();
+
+    if (audioOutputDeviceWatchChangeHandler) {
+        window.removeEventListener('audio-output-device-watch-change', audioOutputDeviceWatchChangeHandler);
+        audioOutputDeviceWatchChangeHandler = null;
+    }
+    if (audioOutputDeviceChangeHandler) {
+        window.removeEventListener('audio-output-device-change', audioOutputDeviceChangeHandler);
+        audioOutputDeviceChangeHandler = null;
+    }
+
+    cleanupAudioOutputDeviceWatcher?.();
+    cleanupAudioOutputDeviceWatcher = null;
+
+    // 移除响度规格化事件监听
+    window.removeEventListener('loudness-normalization-change', () => {});
 
     // 使用AudioController的销毁方法清理基本监听器
     audioController.destroy();
@@ -949,6 +1235,10 @@ onUnmounted(() => {
 
 // 对外暴露接口
 defineExpose({
+    playing,
+    pause: () => {
+        pausePlayback();
+    },
     addSongToQueue: async (hash, name, img, author) => {
         clearAutoSwitchTimer();
 

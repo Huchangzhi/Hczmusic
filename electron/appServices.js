@@ -9,6 +9,8 @@ import fs from 'fs';
 import { exec } from 'child_process';
 import { checkForUpdates } from './updater.js';
 import { Notification } from 'electron';
+import extensionManager from './extensionManager.js';
+import { t } from './i18n.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const store = new Store();
 const { TouchBarLabel, TouchBarButton, TouchBarGroup, TouchBarSpacer } = TouchBar;
@@ -59,12 +61,11 @@ export function createWindow() {
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: false,
-            webSecurity: true,
+            webSecurity: false, // 禁用 CORS、同源策略
+            allowRunningInsecureContent: true, // 允许混合内容
             zoomFactor: 1.0
         },
-        icon: isDev
-            ? path.join(__dirname, '../build/icons/icon.ico')
-            : path.join(process.resourcesPath, 'icons', 'icon.ico')
+        icon: getIconPath('icon.ico')
     });
 
     if (store.get('maximize')) {
@@ -75,8 +76,18 @@ export function createWindow() {
         mainWindow.loadURL('http://localhost:8080');
         mainWindow.webContents.openDevTools();
     } else {
-        mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+        if(savedConfig?.networkMode == 'devnet'){ //开发网
+            mainWindow.loadURL('http://localhost:8080');
+        }else if(savedConfig?.networkMode == 'testnet'){ //测试网
+            mainWindow.loadURL('https://app.testnet.music.moekoe.cn');
+        }else{ //主网
+            mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+        }
     }
+
+    mainWindow.webContents.once('dom-ready', () => {
+        extensionManager.loadChromeExtensions();
+    });
 
     mainWindow.webContents.on('dom-ready', () => {
         console.log('DOM Ready');
@@ -130,21 +141,37 @@ export function createLyricsWindow() {
     const windowWidth = Math.floor(screenWidth * 0.7);
     const windowHeight = 200;
 
-    const savedLyricsPosition = store.get('lyricsWindowPosition') || {
-        x: Math.floor((screenWidth - windowWidth) / 2),
-        y: screenHeight - windowHeight
-    };
-    
+    const savedLyricsPosition = store.get('lyricsWindowPosition') || {};
     const savedLyricsSize = store.get('lyricsWindowSize') || {
         width: windowWidth,
         height: windowHeight
     };
+    
+    let x = savedLyricsPosition.x;
+    let y = savedLyricsPosition.y;
+    let width = savedLyricsSize.width || windowWidth;
+    let height = savedLyricsSize.height || windowHeight;
+    
+    // 限制窗口尺寸不超过屏幕
+    width = Math.min(width, screenWidth);
+    height = Math.min(height, screenHeight);
+    
+    // 检查位置是否有效
+    const isValidPosition = x !== undefined && y !== undefined && 
+                           x >= 0 && x <= screenWidth && 
+                           y >= 0 && y <= screenHeight;
+    
+    // 如果位置无效，设置默认位置
+    if (!isValidPosition) {
+        x = Math.floor((screenWidth - width) / 2);
+        y = screenHeight - height;
+    }
 
     lyricsWindow = new BrowserWindow({
-        width: savedLyricsSize.width,
-        height: savedLyricsSize.height,
-        x: savedLyricsPosition.x,
-        y: savedLyricsPosition.y,
+        width: width,
+        height: height,
+        x: x,
+        y: y,
         minWidth: 800,
         minHeight: 200,
         alwaysOnTop: true,
@@ -158,7 +185,8 @@ export function createLyricsWindow() {
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: false,
-            webSecurity: true,
+            webSecurity: false, // 禁用 CORS、同源策略
+            allowRunningInsecureContent: true, // 允许混合内容
             backgroundThrottling: false,
             zoomFactor: 1.0
         }
@@ -181,23 +209,7 @@ export function createLyricsWindow() {
         });
     }
 
-    // 监听窗口移动事件，限制窗口位置
-    // let moveTimer;
-    // lyricsWindow.on('move', () => {
-    //     if (moveTimer) return;
-    //     moveTimer = setTimeout(() => {
-    //         const bounds = lyricsWindow.getBounds();
-    //         const { height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-    //         if (bounds.y + bounds.height > screenHeight) {
-    //             lyricsWindow.setPosition(bounds.x, screenHeight - bounds.height);
-    //         }
-    //         if (bounds.y < 0) {
-    //             lyricsWindow.setPosition(bounds.x, 0);
-    //         }
-    //         clearTimeout(moveTimer);
-    //         moveTimer = null;
-    //     }, 3000);
-    // });
+
 
     // 设置窗口置顶级别
     lyricsWindow.setAlwaysOnTop(true, 'screen-saver');
@@ -207,65 +219,119 @@ export function createLyricsWindow() {
     lyricsWindow.setBackgroundColor('#00000000');
 }
 
+export function createMvWindow() {
+    const { screenWidth, screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    return new BrowserWindow({
+        width: Math.min(screenWidth * 0.8, 1280),
+        height: Math.min(screenHeight * 0.8, 720),
+        frame: false,
+        transparent: true,
+        show: false,
+        titleBarStyle: 'hiddenInset',
+        autoHideMenuBar: true,
+        backgroundColor: '#00000000',
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.cjs'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false,
+            webSecurity: false, // 禁用 CORS、同源策略
+            allowRunningInsecureContent: true, // 允许混合内容
+            zoomFactor: 1.0,
+            devTools: isDev
+        },
+        icon: getIconPath('icon.ico')
+    });
+}
+
+const getIconPath = (iconName, subPath = '') => path.join(
+    isDev ? __dirname + '/../build/icons' : process.resourcesPath + '/icons',
+    subPath,
+    iconName
+);
+
+export function getTray() {
+    return tray;
+}
+
 // 创建托盘图标及菜单
 export function createTray(mainWindow, title = '') {
     if (tray && title) {
         tray.setToolTip(title);
         return tray;
     }
-    const trayIconPath = isDev
-        ? (process.platform === 'win32' ? path.join(__dirname, '../build/icons/tray-icon.ico') : path.join(__dirname, '../build/icons/tray-icon.png'))
-        : ((process.platform === 'win32') ? path.join(process.resourcesPath, 'icons', 'tray-icon.ico') : path.join(process.resourcesPath, 'icons', 'tray-icon.png'));
 
-    tray = new Tray(trayIconPath);
+    let trayIconName
+    if (process.platform === 'linux') {
+        trayIconName = 'linux-icon.png'
+    } else if (process.platform === 'darwin') {
+        trayIconName = 'tray-icon.png'
+    } else {
+        trayIconName = 'tray-icon.ico'
+    }
+    
+    tray = new Tray(getIconPath(trayIconName));
     tray.setToolTip('MoeKoe Music');
 
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: '项目主页',
-            icon: isDev ? path.join(__dirname, '../build/icons/menu/home.png') : path.join(process.resourcesPath, 'icons', 'menu', 'home.png'),
+            label: t('project-home'),
+            icon: getIconPath('home.png', 'menu'),
             click: () => {
-                shell.openExternal('https://github.com/iAJue/');
+                shell.openExternal('https://Music.MoeKoe.cn');
             }
         },
         {
-            label: '反馈bug',
-            icon: isDev ? path.join(__dirname, '../build/icons/menu/bug.png') : path.join(process.resourcesPath, 'icons', 'menu', 'bug.png'),
+            label: t('report-bug'),
+            icon: getIconPath('bug.png', 'menu'),
             click: () => {
                 shell.openExternal('https://github.com/iAJue/MoeKoeMusic/issues');
             }
         },
         {
-            label: '上一首',
-            icon: isDev ? path.join(__dirname, '../build/icons/menu/prev.png') : path.join(process.resourcesPath, 'icons', 'menu', 'prev.png'), accelerator: 'Alt+CommandOrControl+Left',
+            label: t('prev-track'),
+            icon: getIconPath('prev.png', 'menu'),
+            accelerator: 'Alt+CommandOrControl+Left',
             click: () => {
                 mainWindow.webContents.send('play-previous-track');
             }
         },
         {
-            label: '暂停', accelerator: 'Alt+CommandOrControl+Space',
-            icon: isDev ? path.join(__dirname, '../build/icons/menu/play.png') : path.join(process.resourcesPath, 'icons', 'menu', 'play.png'),
+            label: t('pause'),
+            accelerator: 'Alt+CommandOrControl+Space',
+            icon: getIconPath('play.png', 'menu'),
             click: () => {
                 mainWindow.webContents.send('toggle-play-pause');
             }
         },
         {
-            label: '下一首', accelerator: 'Alt+CommandOrControl+Right',
-            icon: isDev ? path.join(__dirname, '../build/icons/menu/next.png') : path.join(process.resourcesPath, 'icons', 'menu', 'next.png'),
+            label: t('next-track'),
+            accelerator: 'Alt+CommandOrControl+Right',
+            icon: getIconPath('next.png', 'menu'),
             click: () => {
                 mainWindow.webContents.send('play-next-track');
             }
         },
         {
-            label: '检查更新',
-            icon: isDev ? path.join(__dirname, '../build/icons/menu/update.png') : path.join(process.resourcesPath, 'icons', 'menu', 'update.png'),
+            label: t('check-updates'),
+            icon: getIconPath('update.png', 'menu'),
             click: () => {
                 checkForUpdates(false);
             }
         },
         {
-            label: '显示/隐藏', accelerator: 'CmdOrCtrl+Shift+S',
-            icon: isDev ? path.join(__dirname, '../build/icons/menu/show.png') : path.join(process.resourcesPath, 'icons', 'menu', 'show.png'),
+            label: t('restart-app'),
+            icon: getIconPath('restart.png', 'menu'),
+            click: () => {
+                app.relaunch();
+                app.isQuitting = true;
+                app.quit();
+            }
+        },
+        {
+            label: t('show-hide'),
+            accelerator: 'CmdOrCtrl+Shift+S',
+            icon: getIconPath('show.png', 'menu'),
             click: () => {
                 if (mainWindow) {
                     if (mainWindow.isVisible()) {
@@ -277,8 +343,9 @@ export function createTray(mainWindow, title = '') {
             }
         },
         {
-            label: '退出程序', accelerator: 'CmdOrCtrl+Q',
-            icon: isDev ? path.join(__dirname, '../build/icons/menu/quit.png') : path.join(process.resourcesPath, 'icons', 'menu', 'quit.png'),
+            label: t('quit'),
+            accelerator: 'CmdOrCtrl+Q',
+            icon: getIconPath('quit.png', 'menu'),
             click: () => {
                 app.isQuitting = true;
                 app.quit();
@@ -296,7 +363,14 @@ export function createTray(mainWindow, title = '') {
             });
     }
     tray.on('click', () => {
-        mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
+        if (!mainWindow.isVisible()) {
+            mainWindow.show();
+        } else if (!mainWindow.isFocused()) {
+            mainWindow.show();
+            mainWindow.focus();
+        } else {
+            mainWindow.hide(); //大概率永远不会执行
+        }
     });
     tray.on('double-click', () => {
         mainWindow.show();
@@ -312,9 +386,7 @@ export function createTouchBar(mainWindow) {
 
     const iconPath = (iconName) => {
         const originalIcon = nativeImage.createFromPath(
-            isDev
-                ? path.join(__dirname, `../build/icons/${iconName}.png`)
-                : path.join(process.resourcesPath, "icons", `${iconName}.png`)
+            getIconPath(`${iconName}.png`)
         );
 
         // 调整图标大小
@@ -352,7 +424,7 @@ export function createTouchBar(mainWindow) {
 
     // 歌词
     const lyricsLabel = new TouchBarLabel({
-        label: "暂无歌词",
+        label: t('no-lyrics'),
         textColor: "#FFFFFF",
     });
 
@@ -421,7 +493,25 @@ export function startApiServer() {
         }
 
         // 启动 API 服务器进程
-        apiProcess = spawn(apiPath, [], { windowsHide: true });
+        const savedConfig = store.get('settings') || {};
+        const proxy = savedConfig?.proxy;
+        const proxyUrl = savedConfig?.proxyUrl;
+        const dataSource = savedConfig?.dataSource || 'concept'; 
+        
+        const Args = [];
+        if (dataSource === 'concept') {
+            Args.push('--platform=lite');
+            log.info('API data source: concept (lite mode)');
+        }
+        if (proxy === 'on' && proxyUrl) {
+            const proxyAddress = String(proxyUrl).trim();
+            if (proxyAddress) {
+                Args.push(`--proxy=${proxyAddress}`);
+                log.info(`API proxy enabled: ${proxyAddress}`);
+            }
+        }
+
+        apiProcess = spawn(apiPath, Args, { windowsHide: true });
 
         apiProcess.stdout.on('data', (data) => {
             log.info(`API输出: ${data}`);
@@ -551,9 +641,9 @@ export function registerShortcut() {
                 mainWindow.lyricsWindow.close();
                 mainWindow.lyricsWindow = null;
                 new Notification({
-                    title: '桌面歌词已关闭',
-                    body: '仅本次生效',
-                    icon: isDev ? path.join(__dirname, '../build/icons/logo.png') : path.join(process.resourcesPath, 'icons', 'logo.png')
+                    title: t('desktop-lyrics-closed'),
+                    body: t('this-time-only'),
+                    icon: getIconPath('logo.png')
                 }).show();
             } else {
                 createLyricsWindow();
@@ -567,9 +657,9 @@ export function registerShortcut() {
     } catch {
         dialog.showMessageBox({
             type: 'error',
-            title: '提示',
-            message: '快捷键注册失败，请重新尝试',
-            buttons: ['确定']
+            title: t('hint'),
+            message: t('shortcut-failed'),
+            buttons: [t('ok')]
         });
     }
 }
@@ -615,30 +705,24 @@ export function playStartupSound() {
 export function setThumbarButtons(mainWindow, isPlaying = false) {
     const buttons = [
         {
-            tooltip: '上一首',
-            icon: isDev
-                ? path.join(__dirname, '../build/icons/prev.png')
-                : path.join(process.resourcesPath, 'icons', 'prev.png'),
+            tooltip: t('prev-track'),
+            icon: getIconPath('prev.png'),
             click: () => {
                 mainWindow.webContents.send('play-previous-track');
                 setThumbarButtons(mainWindow, true);
             }
         },
         {
-            tooltip: '暂停',
-            icon: isDev
-                ? path.join(__dirname, '../build/icons/pause.png')
-                : path.join(process.resourcesPath, 'icons', 'pause.png'),
+            tooltip: t('pause'),
+            icon: getIconPath('pause.png'),
             click: () => {
                 mainWindow.webContents.send('toggle-play-pause');
                 setThumbarButtons(mainWindow, false);
             }
         },
         {
-            tooltip: '下一首',
-            icon: isDev
-                ? path.join(__dirname, '../build/icons/next.png')
-                : path.join(process.resourcesPath, 'icons', 'next.png'),
+            tooltip: t('next-track'),
+            icon: getIconPath('next.png'),
             click: () => {
                 mainWindow.webContents.send('play-next-track');
                 setThumbarButtons(mainWindow, true);
@@ -648,10 +732,8 @@ export function setThumbarButtons(mainWindow, isPlaying = false) {
 
     if (!isPlaying) {
         buttons[1] = {
-            tooltip: '播放',
-            icon: isDev
-                ? path.join(__dirname, '../build/icons/play.png')
-                : path.join(process.resourcesPath, 'icons', 'play.png'),
+            tooltip: t('play'),
+            icon: getIconPath('play.png'),
             click: () => {
                 mainWindow.webContents.send('toggle-play-pause');
                 setThumbarButtons(mainWindow, true);

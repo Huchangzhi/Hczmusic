@@ -50,11 +50,11 @@
                 <!-- 歌曲搜索结果 -->
                 <ul v-if="searchType === 'song'">
                     <li v-for="(result, index) in searchResults" :key="index" class="result-item"
-                        @click="playSong(result?.HQFileHash || result?.SQFileHash || result?.FileHash, result.SongName, $getCover(result.Image, 480), result.SingerName)"
+                        @click="playSong(result?.HQFileHash || result?.SQFileHash || result?.FileHash, result.OriSongName, $getCover(result.Image, 480), result.SingerName)"
                         @contextmenu.prevent="showContextMenu($event, result)">
                         <img :src="$getCover(result.Image, 100)" alt="Cover" />
                         <div class="result-info">
-                            <p class="result-name">{{ result.SongName }}</p>
+                            <p class="result-name">{{ result.OriSongName }}</p>
                             <p class="result-type">{{ result.SingerName }}</p>
                         </div>
                         <div class="result-meta">
@@ -239,9 +239,7 @@ const goToPage = (page) => {
 };
 
 const handleAlbumClick = (album) => {
-    window.$modal.alert('暂不支持查看');
-    // console.log('Album clicked:', album);
-    // router.push(`/album/${album.albumid}`);
+    router.push(`/PlaylistDetail?albumid=${album.albumid}`);
 };
 
 const handlePlaylistClick = (playlist) => {

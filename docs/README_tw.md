@@ -17,13 +17,14 @@
     <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_tw.md" target="blank"><strong>🇨🇳 繁体中文</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
     <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_ja.md" target="blank"><strong>🇯🇵 日本語</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
     <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_en.md" target="blank"><strong>🇺🇸 English</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
-    <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_ko.md" target="blank"><strong>🇰🇷 한국어</strong></a>
+    <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_ko.md" target="blank"><strong>🇰🇷 한국어</strong></a>&nbsp;&nbsp;|&nbsp;&nbsp;
+    <a href="https://github.com/iAJue/MoeKoeMusic/blob/main/docs/README_ru.md" target="blank"><strong>🇷🇺 Русский</strong></a>
     <br />
     <br />
 </p>
 </p>
 
-![images](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
+![images](https://github.com/iAJue/MoeKoeMusic/raw/main/images/1.png)
 
 ## ❤️ 前言
 
@@ -49,11 +50,10 @@
 - 🛠  更多特性開發中
 
 ## 📢 Todo List
-- [ ] 📺  支持MV播放
+- [x] 📺  支持MV播放
 - [x] 🌚 Light/Dark Mode  自動切換
 - [x] 👆  支持Touch Bar
 - [x] 🖥️  支持PWA，可在Chrome/Edge裏點擊地址欄右邊的 ➕  安裝到電腦
-- [ ] 🟥  支持Last.fm Scrobble
 - [ ] 🎧  支持Mpris
 - [x] ⌨️  全域快速鍵
 - [x] 🤟  多語言支持
@@ -236,12 +236,13 @@ API原始程式碼來自[MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMu
 
 ## 🖼️  截圖
 
-![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/1.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/2.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/3.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/4.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/5.png)
 ![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/6.png)
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/7.png)
+![image](https://github.com/iAJue/MoeKoeMusic/raw/main/images/8.png)
 
 ## 🗓️ Star 歷史
 
