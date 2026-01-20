@@ -470,12 +470,7 @@ const selectionTypeMap = {
             { displayText: '🇨🇳 简体中文', value: 'zh-CN' },
             { displayText: '🇨🇳 繁體中文', value: 'zh-TW' },
             { displayText: '🇺🇸 English', value: 'en' },
-<<<<<<< HEAD
-
-=======
             { displayText: '🇷🇺 Русский', value: 'ru' },
-            { displayText: '🇯🇵 日本語', value: 'ja' },
->>>>>>> upstream/main
             { displayText: '🇰🇷 한국어', value: 'ko' }
         ]
     },
