@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const decode = require('safe-decode-uri-component');
-const { cookieToJson } = require('./util/util');
+const { cookieToJson, randomNumber, randomString } = require('./util/util');
 const { createRequest } = require('./util/request');
 const dotenv = require('dotenv');
 const cache = require('./util/apicache').middleware;
@@ -17,13 +17,16 @@ const cache = require('./util/apicache').middleware;
 
 /**
  * @typedef {{
-*  server?: import('http').Server,
-* }} ExpressExtension
-*/
+ *  server?: import('http').Server,
+ * }} ExpressExtension
+ */
+
+const mid = randomNumber(39).toString();
+const serverDev = randomString(10);
 
 const envPath = path.join(process.cwd(), '.env');
 if (fs.existsSync(envPath)) {
-  dotenv.config({path: envPath, quiet: true});
+  dotenv.config({ path: envPath, quiet: true });
 }
 
 /**
@@ -92,13 +95,29 @@ async function consturctServer(moduleDefs) {
 
   // 将当前平台写入Cookie 以方便查看
   app.use((req, res, next) => {
-    const cookies = (req.headers.cookie || '').split(/;\s+|(?<!\s)\s+$/g);
-    if (!cookies.includes('KUGOU_API_PLATFORM')) {
+    const cookieArr = (req.headers.cookie || '').split(/;\s+|(?<!\s)\s+$/g);
+    let cookies = {};
+    cookieArr.forEach((i) => {
+      let arr = i.split('=');
+      cookies[arr[0]] = arr[1];
+    });
+
+    if (!cookies.hasOwnProperty('KUGOU_API_PLATFORM')) {
       if (req.protocol === 'https') {
         res.append('Set-Cookie', `KUGOU_API_PLATFORM=${process.env.platform}; PATH=/; SameSite=None; Secure`);
       } else {
-        res.append('Set-Cookie', `KUGOU_API_PLATFORM=${process.env.platform}; PATH=/; SameSite=None; Secure`);
+        res.append('Set-Cookie', `KUGOU_API_PLATFORM=${process.env.platform}; PATH=/`);
       }
+    }
+
+    if (req.protocol === 'https') {
+      if (!cookies.hasOwnProperty('KUGOU_API_MID'))
+        res.append('Set-Cookie', `KUGOU_API_MID=${process.env.KUGOU_API_MID ?? mid}; PATH=/; SameSite=None; Secure`);
+      if (!cookies.hasOwnProperty('KUGOU_API_DEV'))
+        res.append('Set-Cookie', `KUGOU_API_DEV=${process.env.KUGOU_API_DEV ?? serverDev}; PATH=/; SameSite=None; Secure`);
+    } else {
+      if (!cookies.hasOwnProperty('KUGOU_API_MID')) res.append('Set-Cookie', `KUGOU_API_MID=${process.env.KUGOU_API_MID ?? mid}; PATH=/`);
+      if (!cookies.hasOwnProperty('KUGOU_API_DEV')) res.append('Set-Cookie', `KUGOU_API_DEV=${process.env.KUGOU_API_DEV ?? serverDev}; PATH=/`);
     }
 
     next();
@@ -111,13 +130,13 @@ async function consturctServer(moduleDefs) {
   /**
    * Serving static files
    */
-  // app.use(express.static(path.join(__dirname, 'public')));
+  app.use(express.static(path.join(__dirname, 'public')));
 
   /**
    * docs
    */
 
-  // app.use('/docs', express.static(path.join(__dirname, 'docs')));
+  app.use('/docs', express.static(path.join(__dirname, 'docs')));
 
   // Cache
   app.use(cache('2 minutes', (_, res) => res.statusCode === 200));
@@ -133,12 +152,14 @@ async function consturctServer(moduleDefs) {
       });
 
       const { cookie, ...params } = req.query;
-      const query = Object.assign({}, { cookie: Object.assign(req.cookies, cookie) }, params, { body: req.body });
+
+      const query = Object.assign({}, { cookie: Object.assign({}, req.cookies, cookie) }, params, { body: req.body });
+
       const authHeader = req.headers['authorization'];
       if (authHeader) {
         query.cookie = {
           ...query.cookie,
-          ...cookieToJson(authHeader)
+          ...cookieToJson(authHeader),
         };
       }
       try {
@@ -205,17 +226,10 @@ async function consturctServer(moduleDefs) {
  * @returns {Promise<import('express').Express & ExpressExtension>}
  */
 async function startService() {
-  const port = Number(process.env.PORT || '6521');
+  const port = Number(process.env.PORT || '3000');
   const host = process.env.HOST || '';
 
   const app = await consturctServer();
-  
-  app.get('/', (req, res) => {
-    res.send({
-      type: 'welcome',
-      data: '感谢接入MoeKoe Music，文档地址：https://music.moekoe.cn/'
-    });
-  });
 
   /** @type {import('express').Express & ExpressExtension} */
   const appExt = app;

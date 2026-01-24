@@ -15,7 +15,6 @@ module.exports = (params, useAxios) => {
   const encryptParams = cryptoAesEncrypt({});
   const pk = cryptoRSAEncrypt({ clienttime_ms: dateNow, key: encryptParams.key });
 
-
   const dataMap = {
     dfid: params?.cookie?.dfid || '-',
     p3: encrypt,
@@ -29,15 +28,18 @@ module.exports = (params, useAxios) => {
     clienttime_ms: dateNow,
   };
 
+  if (isLite) {
+    dataMap['dev'] = params.cookie?.KUGOU_API_DEV;
+  }
+
   return new Promise((resolve, reject) => {
     useAxios({
       baseURL: 'http://login.user.kugou.com',
-      url: `/${isLite ? 'v4' : 'v5'}/login_by_token`,
+      url: `/v5/login_by_token`,
       method: 'POST',
       data: dataMap,
       cookie: params?.cookie,
       encryptType: 'android',
-      headers: { 'x-router': 'login.user.kugou.com' },
     })
       .then((res) => {
         const { body } = res;
@@ -51,10 +53,10 @@ module.exports = (params, useAxios) => {
               res.body.data['token'] = getToken;
             }
           }
-          res.cookie.push(`token=${res.body.data['token']}; Max-Age=${365 * 24 * 60 * 60}`);
-          res.cookie.push(`userid=${res.body.data?.userid || 0}; Max-Age=${365 * 24 * 60 * 60}`);
-          res.cookie.push(`vip_type=${res.body.data?.vip_type || 0}; Max-Age=${365 * 24 * 60 * 60}`);
-          res.cookie.push(`vip_token=${res.body.data?.vip_token || ''}; Max-Age=${365 * 24 * 60 * 60}`);
+          res.cookie.push(`token=${res.body.data['token']}`);
+          res.cookie.push(`userid=${res.body.data?.userid || 0}`);
+          res.cookie.push(`vip_type=${res.body.data?.vip_type || 0}`);
+          res.cookie.push(`vip_token=${res.body.data?.vip_token || ''}`);
         }
         resolve(res);
       })

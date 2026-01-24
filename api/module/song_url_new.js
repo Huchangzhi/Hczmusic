@@ -25,12 +25,10 @@ module.exports = (params, useAxios) => {
       'type': 'audio',
     },
     token,
-    // tracker_param,
     'tracker_param': {
       all_m: 1,
       auth: '',
       is_free_part: params?.free_part ? 1 : 0,
-      // key: signKey(params.hash, cryptoMd5(dfid), userid, appid),
       key: cryptoMd5(`${params.hash}185672dd44712f60bb1736df5a377e82${appid}${cryptoMd5(dfid)}${cryptoMd5(dfid).slice(0, 7)}${userid}`),
       module_id: 0,
       need_climax: 1,

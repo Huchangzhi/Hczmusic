@@ -34,6 +34,7 @@ module.exports = (params, useAxios) => {
         const pk = cryptoRSAEncrypt({ 'clienttime_ms': dateNow, key: encrypt.key }).toUpperCase();
 
         const dataMap = {
+          dev: params.cookie?.KUGOU_API_DEV,
           force_login: 1,
           partnerid: 36,
           clienttime_ms: dateNow,
@@ -61,11 +62,11 @@ module.exports = (params, useAxios) => {
             Object.keys(getToken).forEach((key) => response.cookie.push(`${key}=${getToken[key]}`));
           } else {
             response.body.data['token'] = getToken;
-            response.cookie.push(`token=${getToken}; Max-Age=${365 * 24 * 60 * 60}`);
+            response.cookie.push(`token=${getToken}`);
           }
-          response.cookie.push(`userid=${response.body.data?.userid || 0}; Max-Age=${365 * 24 * 60 * 60}`);
-          response.cookie.push(`vip_type=${response.body.data?.vip_type || 0}; Max-Age=${365 * 24 * 60 * 60}`);
-          response.cookie.push(`vip_token=${response.body.data?.vip_token || ''}; Max-Age=${365 * 24 * 60 * 60}`);
+          response.cookie.push(`userid=${response.body.data?.userid || 0}`);
+          response.cookie.push(`vip_type=${response.body.data?.vip_type || 0}`);
+          response.cookie.push(`vip_token=${response.body.data?.vip_token || ''}`);
         }
         resolve(response);
       } else {

@@ -94,8 +94,8 @@ jobs:
 
       - name: Rename Windows artifact
         run: |
-          mv "./dist_electron/MoeKoe_Music_Setup_v1.5.0.exe" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe"
-          mv "./dist_electron/MoeKoe_Music_Setup_v1.5.0.exe.blockmap" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe.blockmap"
+          mv "./dist_electron/MoeKoe_Music_Setup_v1.5.7.exe" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe"
+          mv "./dist_electron/MoeKoe_Music_Setup_v1.5.7.exe.blockmap" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe.blockmap"
           mv "./dist_electron/latest.yml" "./latest.yml"
 
       - name: Upload Windows artifact to GitHub Release
