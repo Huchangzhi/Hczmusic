@@ -1,21 +1,11 @@
 // src/services/request.js
 import axios from 'axios';
 import { MoeAuthStore } from '../stores/store';
-
-// 获取当前的baseURL
-const getCurrentBaseURL = () => {
-    // 检查localStorage是否设置了本地模式
-    const localMode = localStorage.getItem('localMode');
-    if (localMode === 'true') {
-        return 'http://127.0.0.1:6521';
-    }
-    // 返回环境变量或默认值
-    return import.meta.env.VITE_APP_API_URL || 'http://127.0.0.1:6521';
-};
+import { getApiBaseUrl } from './apiBaseUrl';
 
 // 创建一个 axios 实例
 const httpClient = axios.create({
-    baseURL: getCurrentBaseURL(),
+    baseURL: getApiBaseUrl(),
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
@@ -34,12 +24,22 @@ httpClient.interceptors.request.use(
         const MoeAuth = MoeAuthStore();
         const token = MoeAuth.UserInfo?.token;
         const userid = MoeAuth.UserInfo?.userid;
-        const dfid = MoeAuth.UserInfo?.dfid;
+        const t1 = MoeAuth.UserInfo?.t1;
+        const dfid = MoeAuth.Device?.dfid;
+        const mid = MoeAuth.Device?.mid;
+        const guid = MoeAuth.Device?.guid;
+        const serverDev = MoeAuth.Device?.serverDev;
+        const mac = MoeAuth.Device?.mac;
 
         const authParts = [];
-        if (token) authParts.push(`token=${encodeURIComponent(token)}`);
-        if (userid) authParts.push(`userid=${encodeURIComponent(userid)}`);
-        if (dfid) authParts.push(`dfid=${encodeURIComponent(dfid)}`);
+        if (token) authParts.push(`token=${(token)}`);
+        if (userid) authParts.push(`userid=${(userid)}`);
+        // if (dfid) authParts.push(`dfid=${(dfid)}`);
+        if (t1) authParts.push(`t1=${(t1)}`);
+        if (mid) authParts.push(`KUGOU_API_MID=${(mid)}`);
+        if (guid) authParts.push(`KUGOU_API_GUID=${(guid)}`);
+        if (serverDev) authParts.push(`KUGOU_API_DEV=${(serverDev)}`);
+        if (mac) authParts.push(`KUGOU_API_MAC=${(mac)}`);
 
         if (authParts.length > 0) {
             config.headers = {

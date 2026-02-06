@@ -78,8 +78,7 @@ export function useHelpers(t) {
     const MoeAuth = MoeAuthStore();
     if (!MoeAuth.isAuthenticated) return;
 
-    const today = new Date();
-    const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    const todayKey = new Date().toISOString().split('T')[0];
     const lastVipDate = localStorage.getItem('lastVipRequestDate');
 
     if (lastVipDate === todayKey) {
@@ -87,7 +86,9 @@ export function useHelpers(t) {
     }
 
     try {
-      await get('/youth/day/vip');
+      await get('/youth/day/vip',{
+        receive_day: todayKey
+      });
       await new Promise(resolve => setTimeout(resolve, 500));
       await get('/youth/day/vip/upgrade');
     } catch (error) {

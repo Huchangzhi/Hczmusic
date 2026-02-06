@@ -120,7 +120,7 @@
 1. 克隆本仓库
 
 ```sh
-git clone https://github.com/iAJue/MoeKoeMusic.git
+git clone --recurse-submodules https://github.com/iAJue/MoeKoeMusic.git
 ```
 
 2. 进入目录并安装依赖
@@ -233,8 +233,8 @@ npm run build
    ```
    - ARM64架构(ARM v8+): 
    ```
-   npm run build:api:linux-aarch64 //编译API
-   npm run electron:build:linux-aarch64 //编译主程序
+   npm run build:api:linux-arm64 //编译API
+   npm run electron:build:linux-arm64 //编译主程序
    ```
 
 #### 4. 打包所有平台
@@ -278,7 +278,6 @@ npm run build
 ## 👍 灵感来源
 
 API 源代码来自 [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi) 
-(为了不破坏原项目的结构和后期更新迭代方便,API未做高度集成.~~其实是图省事~~)
 
 - [Apple Music](https://music.apple.com)
 - [YouTube Music](https://music.youtube.com)

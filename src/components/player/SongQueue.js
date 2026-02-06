@@ -10,8 +10,8 @@ export default function useSongQueue(t, musicQueueStore, queueList = null) {
 
     // 添加歌曲到队列并播放
     const addSongToQueue = async (hash, name, img, author, isReset = true) => {
+        if(!hash) return { error: true };
         const currentSongHash = currentSong.value.hash;
-
         if (typeof window !== 'undefined' && typeof window.electron !== 'undefined') {
             window.electron.ipcRenderer.send('set-tray-title', name + ' - ' + author);
         }

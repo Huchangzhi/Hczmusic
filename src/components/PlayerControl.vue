@@ -238,6 +238,10 @@ const onSongEnd = () => {
     playSongFromQueue('next');
 };
 
+// 用于记录上次发送的歌词，避免重复发送
+let lastSentLyric = '';
+let lastSentTime = 0;
+
 // 节流处理的时间更新函数
 const updateCurrentTime = throttle(() => {
     currentTime.value = audio.currentTime;
@@ -252,6 +256,9 @@ const updateCurrentTime = throttle(() => {
 
     const savedConfig = JSON.parse(localStorage.getItem('settings') || '{}');
     const hasLyricsData = Array.isArray(lyricsData.value) && lyricsData.value.length > 0;
+    
+    const statusBarLyricsEnabled = savedConfig?.statusBarLyrics === 'on';
+    const desktopLyricsEnabled = savedConfig?.desktopLyrics === 'on';
 
     if (audio) {
         if (savedConfig?.lyricsAlign != lyricsAlign.value) lyricsAlign.value = savedConfig.lyricsAlign;
@@ -260,41 +267,59 @@ const updateCurrentTime = throttle(() => {
             highlightCurrentChar(audio.currentTime, !lyricsFlag.value);
         }
 
-        if (isElectron()) {
-            const desktopLyricsSource = hasLyricsData ? lyricsData.value : [];
-            const desktopLyricsPayload = JSON.parse(JSON.stringify(desktopLyricsSource));
-            const serverLyricsSource = hasLyricsData && originalLyrics.value ? originalLyrics.value : [];
-            const serverLyricsPayload = JSON.parse(JSON.stringify(serverLyricsSource));
-            const currentSongPayload = JSON.parse(JSON.stringify(currentSong.value ?? null));
-
-            if (savedConfig?.desktopLyrics === 'on' || savedConfig?.statusBarLyrics === 'on') {
-                const currentLine = hasLyricsData ? getCurrentLineText(audio.currentTime) : '';
-                window.electron.ipcRenderer.send('lyrics-data', {
-                    currentTime: audio.currentTime,
-                    lyricsData: desktopLyricsPayload,
-                    currentSongHash: currentSong.value?.hash || '',
-                    currentLyric: currentLine
-                });
+        // 只在有歌曲且正在播放时才发送 IPC
+        if (isElectron() && audio.src && playing.value && (desktopLyricsEnabled || statusBarLyricsEnabled)) {
+            const currentLine = hasLyricsData ? getCurrentLineText(audio.currentTime) : '';
+            
+            // 只有歌词真正变化时才发送（防抖）
+            const currentTimeMs = Date.now();
+            if (currentLine !== lastSentLyric || currentTimeMs - lastSentTime > 1000) {
+                lastSentLyric = currentLine;
+                lastSentTime = currentTimeMs;
+                
+                // 使用 JSON 序列化确保对象可以被克隆
+                try {
+                    const lyricsPayload = hasLyricsData ? JSON.parse(JSON.stringify(lyricsData.value)) : [];
+                    window.electron.ipcRenderer.send('lyrics-data', {
+                        currentTime: audio.currentTime,
+                        lyricsData: lyricsPayload,
+                        currentSongHash: currentSong.value?.hash || '',
+                        currentLyric: currentLine
+                    });
+                } catch (e) {
+                    // 如果序列化失败，只发送必要的数据
+                    window.electron.ipcRenderer.send('lyrics-data', {
+                        currentTime: audio.currentTime,
+                        lyricsData: [],
+                        currentSongHash: currentSong.value?.hash || '',
+                        currentLyric: currentLine
+                    });
+                }
             }
-            if (savedConfig?.apiMode === 'on') {
+        }
+        
+        if (isElectron() && audio.src && playing.value && savedConfig?.apiMode === 'on') {
+            try {
+                const serverLyricsPayload = hasLyricsData && originalLyrics.value ? JSON.parse(JSON.stringify(originalLyrics.value)) : [];
+                const currentSongPayload = currentSong.value ? JSON.parse(JSON.stringify(currentSong.value)) : null;
                 window.electron.ipcRenderer.send('server-lyrics', {
                     currentTime: audio.currentTime,
                     lyricsData: serverLyricsPayload,
                     currentSong: currentSongPayload,
                     duration: audio.duration
                 });
+            } catch (e) {
+                // 序列化失败时跳过
             }
-            if (window.electron.platform == 'darwin' && savedConfig?.touchBar == 'on') {
-                const currentLine = hasLyricsData ? getCurrentLineText(audio.currentTime) : '';
-                window.electron.ipcRenderer.send(
-                    "update-current-lyrics",
-                    currentLine
-                );
-            }
+        }
+        
+        if (isElectron() && audio.src && playing.value && window.electron.platform == 'darwin' && savedConfig?.touchBar == 'on') {
+            const currentLine = hasLyricsData ? getCurrentLineText(audio.currentTime) : '';
+            window.electron.ipcRenderer.send("update-current-lyrics", currentLine);
         }
     }
 
-    if (!hasLyricsData && isElectron() && (savedConfig?.desktopLyrics === 'on' || savedConfig?.statusBarLyrics === 'on' || savedConfig?.apiMode === 'on')) {
+    if (!hasLyricsData && isElectron() && (desktopLyricsEnabled || statusBarLyricsEnabled || savedConfig?.apiMode === 'on')) {
         if (isLyrics === false) return;
         getCurrentLyrics();
     }
@@ -1086,11 +1111,6 @@ onMounted(() => {
         }
     }
 
-    // 如果有当前歌曲，获取歌词
-    if (currentSong.value?.hash && !currentSong.value.isLocal) {
-        getCurrentLyrics();
-    }
-
     // 初始化播放模式
     playbackMode.initPlaybackMode();
 
@@ -1168,6 +1188,7 @@ onMounted(() => {
     });
 
     audio.addEventListener('error', (e) => {
+        console.log('[PlayerControl] 音频错误代码:', audio.error?.code);
         console.error('[PlayerControl] 音频错误:', e);
         if(audio.error?.code == 4){
             addSongToQueue(currentSong.value.hash, currentSong.value.name, currentSong.value.img, currentSong.value.author);
