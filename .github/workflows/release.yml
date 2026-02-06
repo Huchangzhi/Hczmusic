@@ -97,8 +97,8 @@ jobs:
 
       - name: Rename Windows artifact
         run: |
-          mv "./dist_electron/MoeKoe_Music_Setup_v1.5.7.exe" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe"
-          mv "./dist_electron/MoeKoe_Music_Setup_v1.5.7.exe.blockmap" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe.blockmap"
+          mv "./dist_electron/MoeKoe_Music_Setup_v1.5.8.exe" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe"
+          mv "./dist_electron/MoeKoe_Music_Setup_v1.5.8.exe.blockmap" "./Hmusic_Setup_${{ needs.increment-version.outputs.version }}.exe.blockmap"
           mv "./dist_electron/latest.yml" "./latest.yml"
 
       - name: Upload Windows artifact to GitHub Release
@@ -140,8 +140,8 @@ jobs:
 
       - name: Rename macOS artifacts
         run: |
-          mv "./dist_electron/Hmusic-1.2.0-arm64-arm64.dmg" "./MoeKoe_Music_${{ needs.increment-version.outputs.version }}-arm64.dmg"
-          mv "./dist_electron/Hmusic-1.2.0-arm64-mac-x64.dmg" "./MoeKoe_Music_${{ needs.increment-version.outputs.version }}-x64.dmg"
+          mv "./dist_electron/Hmusic-x64.dmg" "./MoeKoe_Music_${{ needs.increment-version.outputs.version }}-arm64.dmg"
+          mv "./dist_electron/Hmusic-arm64.dmg" "./MoeKoe_Music_${{ needs.increment-version.outputs.version }}-x64.dmg"
       
       - name: List files after renaming
         run: ls -al ./dist_electron
